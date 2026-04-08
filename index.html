@@ -95,7 +95,9 @@ header { background: #1a1a2e; color: #fff; padding: 0 28px; height: 56px; displa
 .payroll-card {
   background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
   padding: 16px 20px; display: flex; align-items: center; gap: 20px;
+  cursor: pointer; transition: all 0.15s;
 }
+.payroll-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); transform: translateY(-1px); }
 .pos-badge {
   padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 800;
   letter-spacing: 0.3px; white-space: nowrap; flex-shrink: 0;
@@ -442,7 +444,7 @@ function renderPayrolls() {
   }
 
   list.innerHTML = payrolls.map(pr => `
-    <div class="payroll-card">
+    <div class="payroll-card" onclick="openPayroll('${pr.id}')">
       <span class="pos-badge pos-${pr.position}">${POS_LABELS[pr.position]||pr.position}</span>
       <div style="flex:1;min-width:0">
         <div class="pr-crew">${esc(pr.crew || '—')}</div>
@@ -452,7 +454,7 @@ function renderPayrolls() {
         <div class="pr-total">${fmtMoney(pr.total)}</div>
         <div class="pr-date">${relDate(pr.savedAt)}</div>
       </div>
-      <button class="pr-del" onclick="askDel('payroll','${pr.id}')">✕</button>
+      <button class="pr-del" onclick="event.stopPropagation();askDel('payroll','${pr.id}')">✕</button>
     </div>`).join('');
 }
 
@@ -564,6 +566,14 @@ function execDel() {
 document.getElementById('del-bg').addEventListener('click', e => { if (e.target===document.getElementById('del-bg')) closeDel(); });
 document.addEventListener('keydown', e => { if (e.key==='Escape') { closeModal(); closeDel(); } });
 
+function openPayroll(prid) {
+  const proj   = getProj(cur.pid);
+  const folder = getFolder(cur.pid, cur.fid);
+  const week   = getWeek(cur.pid, cur.fid, cur.wid);
+  const params = new URLSearchParams({ pid: cur.pid, fid: cur.fid, wid: cur.wid, prid, project: proj.name, folder: folder.name, week: week.name });
+  window.location.href = `report.html?${params}`;
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 setBreadcrumb(0);
 renderProjects(); // render immediately from localStorage
@@ -574,9 +584,17 @@ renderProjects(); // render immediately from localStorage
     if (row?.data) {
       data = row.data;
       localStorage.setItem(KEY, JSON.stringify(data));
-      renderProjects();
     }
   } catch(e) { /* offline — localStorage already rendered */ }
+
+  // Auto-navigate back to week if returning from report.html
+  const urlP = new URLSearchParams(location.search);
+  const rPid = urlP.get('pid'), rFid = urlP.get('fid'), rWid = urlP.get('wid');
+  if (rPid && rFid && rWid) {
+    goWeek(rPid, rFid, rWid);
+  } else {
+    renderProjects();
+  }
 })();
 </script>
 </body>
