@@ -816,9 +816,13 @@ document.getElementById('btn-download').addEventListener('click', () => {
     const saveBtn = document.getElementById('btn-save');
     saveBtn.style.display = '';
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
       const KEY  = 'dccable_v2';
-      const raw  = localStorage.getItem(KEY);
+      let raw = localStorage.getItem(KEY);
+      if (!raw) {
+        const { data: row } = await SB.from('app_state').select('data').eq('id', KEY).single();
+        if (row?.data) { raw = JSON.stringify(row.data); localStorage.setItem(KEY, raw); }
+      }
       if (!raw) {
         alert('No project data found.\nMake sure you opened this editor from a Week folder in the home screen.');
         return;
