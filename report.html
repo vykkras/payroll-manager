@@ -854,6 +854,16 @@ document.getElementById('btn-download').addEventListener('click', () => {
 
         // Restore quantities and re-render
         if (pr.qtys) { payQtys = { ...pr.qtys }; renderPayment(); }
+
+        // Skip upload overlay — go straight to the editor
+        document.getElementById('upload-overlay').style.display = 'none';
+        document.getElementById('app').classList.add('visible');
+        document.getElementById('change-file-btn').textContent = 'Load report file';
+        document.getElementById('change-file-btn').style.display = '';
+        document.getElementById('summary-tbody').innerHTML = `
+          <tr><td colspan="3" style="text-align:center;padding:48px 20px;color:#ccc;font-size:13px">
+            Load a report file to see production summary
+          </td></tr>`;
       }
     }
   }
