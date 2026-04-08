@@ -207,6 +207,28 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 #breakdown-table tbody tr:last-child td { border-bottom: none; }
 #breakdown-table td.r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* ── Calculator ── */
+#calc-wrap { border-top: 1px solid #ececec; flex-shrink: 0; }
+#calc-display {
+  background: #1a1a2e; border-radius: 10px; padding: 10px 14px 8px;
+  margin-bottom: 10px; min-height: 58px; display: flex; flex-direction: column; justify-content: flex-end;
+}
+#calc-expr  { font-size: 11px; color: rgba(255,255,255,0.35); text-align: right; min-height: 16px; word-break: break-all; }
+#calc-result { font-size: 26px; font-weight: 700; color: #fff; text-align: right; font-variant-numeric: tabular-nums; word-break: break-all; }
+#calc-keys  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.ck {
+  border: none; border-radius: 8px; padding: 12px 4px; font-size: 15px; font-weight: 600;
+  cursor: pointer; background: #fff; color: #1a1a2e; border: 1px solid #ebebeb;
+  transition: background 0.1s;
+}
+.ck:hover  { background: #f0f0f0; }
+.ck:active { background: #e0e0e0; }
+.ck.op     { background: #f5f5f5; color: #555; }
+.ck.op:hover { background: #ebebeb; }
+.ck.acc    { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.ck.acc:hover { background: #2c2c4a; }
+.ck.wide   { grid-column: span 2; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -272,6 +294,45 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
         </thead>
         <tbody id="summary-tbody"></tbody>
       </table>
+    </div>
+
+    <!-- Calculator -->
+    <div id="calc-wrap">
+      <div class="panel-header" style="border-top:1px solid #ececec">
+        <span class="panel-title">Calculator</span>
+        <button id="calc-clear" style="font-size:11px;color:#bbb;background:none;border:none;cursor:pointer;padding:0">Clear</button>
+      </div>
+      <div style="padding:12px 20px 16px">
+        <div id="calc-display">
+          <div id="calc-expr"></div>
+          <div id="calc-result">0</div>
+        </div>
+        <div id="calc-keys">
+          <button class="ck op">C</button>
+          <button class="ck op">±</button>
+          <button class="ck op">%</button>
+          <button class="ck op acc">÷</button>
+
+          <button class="ck">7</button>
+          <button class="ck">8</button>
+          <button class="ck">9</button>
+          <button class="ck op acc">×</button>
+
+          <button class="ck">4</button>
+          <button class="ck">5</button>
+          <button class="ck">6</button>
+          <button class="ck op acc">−</button>
+
+          <button class="ck">1</button>
+          <button class="ck">2</button>
+          <button class="ck">3</button>
+          <button class="ck op acc">+</button>
+
+          <button class="ck wide">0</button>
+          <button class="ck">.</button>
+          <button class="ck op acc">=</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -343,6 +404,99 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 </div>
 
 <script>
+// ─── CALCULATOR ──────────────────────────────────────────────────────────────
+(function () {
+  let expr = '', result = '0', justEvaled = false;
+
+  const exprEl   = document.getElementById('calc-expr');
+  const resultEl = document.getElementById('calc-result');
+
+  function display() {
+    exprEl.textContent   = expr;
+    resultEl.textContent = result;
+  }
+
+  function fmt(n) {
+    if (!isFinite(n)) return 'Error';
+    const s = parseFloat(n.toPrecision(12)).toString();
+    return s;
+  }
+
+  document.getElementById('calc-keys').addEventListener('click', e => {
+    const btn = e.target.closest('.ck');
+    if (!btn) return;
+    const v = btn.textContent.trim();
+
+    if (v === 'C') {
+      expr = ''; result = '0'; justEvaled = false;
+
+    } else if (v === '±') {
+      if (result !== '0') {
+        result = fmt(parseFloat(result) * -1);
+        if (justEvaled) expr = result;
+      }
+
+    } else if (v === '%') {
+      if (result !== '0') {
+        result = fmt(parseFloat(result) / 100);
+        if (justEvaled) expr = result;
+      }
+
+    } else if (v === '=') {
+      if (!expr) return;
+      try {
+        const raw = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+        const val = Function('"use strict"; return (' + raw + ')')();
+        result = fmt(val);
+        expr   = expr + ' =';
+        justEvaled = true;
+      } catch { result = 'Error'; }
+
+    } else if (['+', '−', '×', '÷'].includes(v)) {
+      if (justEvaled) { expr = result + ' ' + v + ' '; justEvaled = false; }
+      else            { expr = expr.trimEnd().replace(/[+−×÷]$/, '').trimEnd() + ' ' + v + ' '; }
+      result = expr.split(/[+−×÷]/).pop().trim() || result;
+
+    } else {
+      // digit or dot
+      if (justEvaled) { expr = v; result = v; justEvaled = false; }
+      else {
+        // if last char is a digit/dot, append; otherwise start new number
+        const tail = expr.trimEnd();
+        if (/[+−×÷]$/.test(tail) || tail === '') {
+          expr += v; result = v;
+        } else {
+          expr += v;
+          const parts = expr.split(/[+−×÷]/);
+          result = parts[parts.length - 1].trim() || result;
+        }
+      }
+    }
+    display();
+  });
+
+  document.getElementById('calc-clear').addEventListener('click', () => {
+    expr = ''; result = '0'; justEvaled = false; display();
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    const map = { '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+      '.':'.', '+':'+', '-':'−', '*':'×', '/':'÷', 'Enter':'=', 'Escape':'C', 'Backspace':'back' };
+    const k = map[e.key];
+    if (!k) return;
+    if (document.activeElement?.tagName === 'INPUT') return; // don't capture when typing in fields
+    e.preventDefault();
+    if (k === 'back') {
+      if (justEvaled) { expr = ''; result = '0'; justEvaled = false; }
+      else { expr = expr.slice(0, -1); const parts = expr.split(/[+−×÷]/); result = parts[parts.length-1].trim() || '0'; }
+      display(); return;
+    }
+    const btn = [...document.querySelectorAll('.ck')].find(b => b.textContent.trim() === k);
+    btn?.click();
+  });
+})();
+
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
 const SB = supabase.createClient(
   'https://pmcllnbkzoztwpsxdbgf.supabase.co',
