@@ -207,6 +207,35 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 #breakdown-table tbody tr:last-child td { border-bottom: none; }
 #breakdown-table td.r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* ── Saved Crews ── */
+#crews-bar {
+  display: none; padding: 10px 20px 12px; border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+.crews-label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+#crew-cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+#crew-cards::-webkit-scrollbar { height: 3px; }
+.crew-card {
+  flex-shrink: 0; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
+  padding: 9px 13px; cursor: pointer; transition: all 0.15s; min-width: 120px;
+  box-shadow: 2px 2px 0 #e8e8e8, 4px 4px 0 #f0f0f0;
+}
+.crew-card:hover { border-color: #3949ab; box-shadow: 2px 2px 0 #c5cae9, 4px 4px 0 #e8eaf6; transform: translateY(-1px); }
+.crew-card-name { font-size: 12px; font-weight: 700; color: #1a1a2e; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.crew-card-row { font-size: 10px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.crew-card-row span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.crew-card .del-crew { display: none; position: absolute; top: 5px; right: 6px; font-size: 10px; color: #ccc; background: none; border: none; cursor: pointer; line-height: 1; }
+.crew-card { position: relative; }
+.crew-card:hover .del-crew { display: block; }
+.crew-card .del-crew:hover { color: #c0392b; }
+
+#save-crew-row { padding: 0 20px 10px; display: flex; justify-content: flex-end; }
+#btn-save-crew {
+  font-size: 12px; font-weight: 600; color: #3949ab; background: #e8eaf6;
+  border: none; border-radius: 7px; padding: 7px 14px; cursor: pointer;
+}
+#btn-save-crew:hover { background: #c5cae9; }
+
 /* ── Calculator ── */
 #calc-wrap { border-top: 1px solid #ececec; flex-shrink: 0; }
 #calc-display {
@@ -344,6 +373,12 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
       <button class="pos-tab"        data-pos="tercero">Tercero <span class="sub">3rd Position</span></button>
     </div>
 
+    <!-- Saved crew cards -->
+    <div id="crews-bar">
+      <div class="crews-label">Saved Crews</div>
+      <div id="crew-cards"></div>
+    </div>
+
     <div class="pay-meta">
       <div class="meta-field"><label>Project</label><input id="meta-project" type="text" placeholder="Selma, Alabama"></div>
       <div class="meta-field"><label>Period</label><input id="meta-period" type="text" placeholder="e.g. Mar 1–7, 2026"></div>
@@ -351,6 +386,9 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
         <label id="meta-crew-label" style="color:#3949ab">▸ Primero — Name</label>
         <input id="meta-crew-name" type="text" placeholder="Crew member name">
       </div>
+    </div>
+    <div id="save-crew-row">
+      <button id="btn-save-crew">＋ Save as Crew</button>
     </div>
 
     <div id="pay-wrap">
@@ -404,6 +442,71 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 </div>
 
 <script>
+// ─── SAVED CREWS ─────────────────────────────────────────────────────────────
+const CREWS_KEY = 'dccable_crews';
+let savedCrews = JSON.parse(localStorage.getItem(CREWS_KEY) || '[]');
+
+async function persistCrews() {
+  localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews));
+  try { await SB.from('app_state').upsert({ id: CREWS_KEY, data: savedCrews, updated_at: new Date().toISOString() }); }
+  catch(e) { console.warn('Crew sync failed:', e); }
+}
+
+function renderCrewCards() {
+  const bar   = document.getElementById('crews-bar');
+  const wrap  = document.getElementById('crew-cards');
+  if (!savedCrews.length) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  wrap.innerHTML = savedCrews.map(c => `
+    <div class="crew-card" onclick="loadCrew('${c.id}')">
+      <div class="crew-card-name">${esc(c.label)}</div>
+      <div class="crew-card-row"><span style="background:#3949ab"></span>${esc(c.primero||'—')}</div>
+      <div class="crew-card-row"><span style="background:#2e7d32"></span>${esc(c.segundo||'—')}</div>
+      <div class="crew-card-row"><span style="background:#e65100"></span>${esc(c.tercero||'—')}</div>
+      <button class="del-crew" onclick="event.stopPropagation();deleteCrew('${c.id}')">✕</button>
+    </div>`).join('');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function loadCrew(id) {
+  const c = savedCrews.find(x => x.id === id);
+  if (!c) return;
+  crewNames.primero = c.primero || '';
+  crewNames.segundo = c.segundo || '';
+  crewNames.tercero = c.tercero || '';
+  document.getElementById('meta-crew-name').value = crewNames[currentPos];
+}
+
+async function deleteCrew(id) {
+  savedCrews = savedCrews.filter(x => x.id !== id);
+  await persistCrews();
+  renderCrewCards();
+}
+
+document.getElementById('btn-save-crew').addEventListener('click', async () => {
+  syncCrewName();
+  const label = [crewNames.primero, crewNames.segundo, crewNames.tercero].filter(Boolean).join(' / ') || 'Crew';
+  savedCrews.push({
+    id: Date.now().toString(36),
+    label,
+    primero: crewNames.primero,
+    segundo: crewNames.segundo,
+    tercero: crewNames.tercero,
+  });
+  await persistCrews();
+  renderCrewCards();
+});
+
+// Load crews from Supabase on start
+(async () => {
+  try {
+    const { data: row } = await SB.from('app_state').select('data').eq('id', CREWS_KEY).single();
+    if (row?.data) { savedCrews = row.data; localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews)); }
+  } catch(e) {}
+  renderCrewCards();
+})();
+
 // ─── CALCULATOR ──────────────────────────────────────────────────────────────
 (function () {
   let expr = '', result = '0', justEvaled = false;
