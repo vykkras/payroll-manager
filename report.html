@@ -453,70 +453,9 @@ async function syncToCloud(d) {
   } catch(e) { console.warn('Supabase sync failed:', e); }
 }
 
-// ─── SAVED CREWS ─────────────────────────────────────────────────────────────
+// ─── SAVED CREWS (wired at end of script) ────────────────────────────────────
 const CREWS_KEY = 'dccable_crews';
-let savedCrews = JSON.parse(localStorage.getItem(CREWS_KEY) || '[]');
-
-async function persistCrews() {
-  localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews));
-  try { await SB.from('app_state').upsert({ id: CREWS_KEY, data: savedCrews, updated_at: new Date().toISOString() }); }
-  catch(e) { console.warn('Crew sync failed:', e); }
-}
-
-function renderCrewCards() {
-  const bar   = document.getElementById('crews-bar');
-  const wrap  = document.getElementById('crew-cards');
-  if (!savedCrews.length) { bar.style.display = 'none'; return; }
-  bar.style.display = '';
-  wrap.innerHTML = savedCrews.map(c => `
-    <div class="crew-card" onclick="loadCrew('${c.id}')">
-      <div class="crew-card-name">${esc(c.label)}</div>
-      <div class="crew-card-row"><span style="background:#3949ab"></span>${esc(c.primero||'—')}</div>
-      <div class="crew-card-row"><span style="background:#2e7d32"></span>${esc(c.segundo||'—')}</div>
-      <div class="crew-card-row"><span style="background:#e65100"></span>${esc(c.tercero||'—')}</div>
-      <button class="del-crew" onclick="event.stopPropagation();deleteCrew('${c.id}')">✕</button>
-    </div>`).join('');
-}
-
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function loadCrew(id) {
-  const c = savedCrews.find(x => x.id === id);
-  if (!c) return;
-  crewNames.primero = c.primero || '';
-  crewNames.segundo = c.segundo || '';
-  crewNames.tercero = c.tercero || '';
-  document.getElementById('meta-crew-name').value = crewNames[currentPos];
-}
-
-async function deleteCrew(id) {
-  savedCrews = savedCrews.filter(x => x.id !== id);
-  await persistCrews();
-  renderCrewCards();
-}
-
-document.getElementById('btn-save-crew').addEventListener('click', async () => {
-  syncCrewName();
-  const label = [crewNames.primero, crewNames.segundo, crewNames.tercero].filter(Boolean).join(' / ') || 'Crew';
-  savedCrews.push({
-    id: Date.now().toString(36),
-    label,
-    primero: crewNames.primero,
-    segundo: crewNames.segundo,
-    tercero: crewNames.tercero,
-  });
-  await persistCrews();
-  renderCrewCards();
-});
-
-// Load crews from Supabase on start
-(async () => {
-  try {
-    const { data: row } = await SB.from('app_state').select('data').eq('id', CREWS_KEY).single();
-    if (row?.data) { savedCrews = row.data; localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews)); }
-  } catch(e) {}
-  renderCrewCards();
-})();
+let savedCrews = [];
 
 // ─── CALCULATOR ──────────────────────────────────────────────────────────────
 (function () {
@@ -1179,6 +1118,61 @@ document.getElementById('btn-download').addEventListener('click', () => {
     setTimeout(() => { toast.style.display = 'none'; }, 5000);
   });
 }());
+
+// ─── SAVED CREWS ─────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function saveCrewsLocal() {
+  localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews));
+  SB.from('app_state').upsert({ id: CREWS_KEY, data: savedCrews, updated_at: new Date().toISOString() })
+    .then(() => {}).catch(e => console.warn('crew sync:', e));
+}
+
+function renderCrewCards() {
+  const bar  = document.getElementById('crews-bar');
+  const wrap = document.getElementById('crew-cards');
+  if (!savedCrews.length) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  wrap.innerHTML = savedCrews.map(c => `
+    <div class="crew-card" onclick="loadCrew('${c.id}')">
+      <div class="crew-card-name">${esc(c.label)}</div>
+      <div class="crew-card-row"><span style="background:#3949ab"></span>${esc(c.primero||'—')}</div>
+      <div class="crew-card-row"><span style="background:#2e7d32"></span>${esc(c.segundo||'—')}</div>
+      <div class="crew-card-row"><span style="background:#e65100"></span>${esc(c.tercero||'—')}</div>
+      <button class="del-crew" onclick="event.stopPropagation();deleteCrew('${c.id}')">✕</button>
+    </div>`).join('');
+}
+
+function loadCrew(id) {
+  const c = savedCrews.find(x => x.id === id);
+  if (!c) return;
+  crewNames.primero = c.primero || '';
+  crewNames.segundo = c.segundo || '';
+  crewNames.tercero = c.tercero || '';
+  document.getElementById('meta-crew-name').value = crewNames[currentPos] || '';
+}
+
+function deleteCrew(id) {
+  savedCrews = savedCrews.filter(x => x.id !== id);
+  saveCrewsLocal();
+  renderCrewCards();
+}
+
+document.getElementById('btn-save-crew').addEventListener('click', () => {
+  syncCrewName();
+  const label = [crewNames.primero, crewNames.segundo, crewNames.tercero].filter(Boolean).join(' / ') || 'Crew';
+  savedCrews.push({ id: Date.now().toString(36), label, primero: crewNames.primero, segundo: crewNames.segundo, tercero: crewNames.tercero });
+  saveCrewsLocal();
+  renderCrewCards();
+});
+
+// Init: load from localStorage first, then Supabase
+savedCrews = JSON.parse(localStorage.getItem(CREWS_KEY) || '[]');
+renderCrewCards();
+SB.from('app_state').select('data').eq('id', CREWS_KEY).single()
+  .then(({ data: row }) => {
+    if (row?.data) { savedCrews = row.data; localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews)); renderCrewCards(); }
+  }).catch(() => {});
 </script>
 </body>
 </html>
