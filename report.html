@@ -442,6 +442,17 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 </div>
 
 <script>
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const SB = supabase.createClient(
+  'https://pmcllnbkzoztwpsxdbgf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtY2xsbmJrem96dHdwc3hkYmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzA2OTIsImV4cCI6MjA5MTI0NjY5Mn0.NOt__NLICA5Bf9HYruBGQ8mJLq-YFAOHo_2r7RJQl5U'
+);
+async function syncToCloud(d) {
+  try {
+    await SB.from('app_state').upsert({ id: 'dccable_v2', data: d, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('Supabase sync failed:', e); }
+}
+
 // ─── SAVED CREWS ─────────────────────────────────────────────────────────────
 const CREWS_KEY = 'dccable_crews';
 let savedCrews = JSON.parse(localStorage.getItem(CREWS_KEY) || '[]');
@@ -599,17 +610,6 @@ document.getElementById('btn-save-crew').addEventListener('click', async () => {
     btn?.click();
   });
 })();
-
-// ─── SUPABASE ────────────────────────────────────────────────────────────────
-const SB = supabase.createClient(
-  'https://pmcllnbkzoztwpsxdbgf.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtY2xsbmJrem96dHdwc3hkYmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzA2OTIsImV4cCI6MjA5MTI0NjY5Mn0.NOt__NLICA5Bf9HYruBGQ8mJLq-YFAOHo_2r7RJQl5U'
-);
-async function syncToCloud(d) {
-  try {
-    await SB.from('app_state').upsert({ id: 'dccable_v2', data: d, updated_at: new Date().toISOString() });
-  } catch(e) { console.warn('Supabase sync failed:', e); }
-}
 
 // ─── DATA DEFINITIONS ────────────────────────────────────────────────────────
 
