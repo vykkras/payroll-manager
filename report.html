@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC Cable — Production Reports</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; height: 100vh; overflow: hidden; }
+
+/* ── Header ── */
+header {
+  background: #1a1a2e; color: #fff;
+  padding: 0 20px; height: 52px;
+  display: flex; align-items: center; gap: 16px;
+  position: relative; z-index: 300;
+}
+header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; }
+#back-btn { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; white-space: nowrap; padding: 4px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.15); }
+#back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+#breadcrumb { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 2px; flex: 1; }
+#header-file { font-size: 11px; color: rgba(255,255,255,0.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#change-file-btn {
+  font-size: 11px; color: rgba(255,255,255,0.6); cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2); background: none;
+  padding: 4px 12px; border-radius: 5px; white-space: nowrap;
+}
+#change-file-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
+/* ── Upload overlay ── */
+#upload-overlay {
+  position: fixed; inset: 52px 0 0 0; background: #f0f2f5;
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+#upload-zone {
+  border: 2px dashed #c5cae9; background: #fff; border-radius: 16px;
+  padding: 60px 80px; text-align: center; cursor: pointer; transition: all 0.2s;
+  max-width: 460px; width: 100%;
+}
+#upload-zone:hover, #upload-zone.drag-over { border-color: #3949ab; background: #e8eaf6; }
+#upload-zone .icon { font-size: 44px; margin-bottom: 14px; display: block; }
+#upload-zone h2 { font-size: 16px; font-weight: 600; color: #3949ab; margin-bottom: 6px; }
+#upload-zone p { font-size: 13px; color: #999; }
+.fmt-tags { margin-top: 14px; display: flex; gap: 6px; justify-content: center; }
+.fmt-tag { background: #e8eaf6; color: #3949ab; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+#file-input { display: none; }
+
+/* ── Filter bar ── */
+#filter-bar {
+  display: none; align-items: center; gap: 12px;
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 10px 20px; height: 50px;
+}
+#filter-bar.visible { display: flex; }
+.filter-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.filter-select {
+  border: 1px solid #e0e0e0; border-radius: 7px; padding: 6px 28px 6px 10px;
+  font-size: 13px; color: #333; background: #fafafa; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+.filter-select:focus { outline: none; border-color: #3949ab; }
+.filter-divider { width: 1px; height: 20px; background: #e8e8e8; margin: 0 4px; }
+#record-count { font-size: 12px; color: #aaa; margin-left: auto; }
+
+/* ── Main split layout ── */
+#app {
+  display: none;
+  height: calc(100vh - 102px); /* header + filter bar */
+}
+#app.visible { display: grid; grid-template-columns: 1fr 1fr; }
+
+/* ── Left: Summary ── */
+#left-panel {
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto; background: #f8f9fb;
+  display: flex; flex-direction: column;
+}
+.panel-header {
+  padding: 14px 20px 10px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: #f8f9fb; z-index: 10;
+  border-bottom: 1px solid #ececec;
+}
+.panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #888; }
+.panel-hint { font-size: 11px; color: #bbb; }
+
+/* Summary table */
+#summary-wrap { padding: 16px 20px; flex: 1; }
+#summary-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+#summary-table thead th {
+  background: #1a1a2e; color: rgba(255,255,255,0.7);
+  padding: 9px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+#summary-table thead th.r { text-align: right; }
+#summary-table tbody td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #333; }
+#summary-table tbody tr:last-child td { border-bottom: none; }
+#summary-table tbody tr:hover td { background: #fafbff; }
+#summary-table td.item-name { font-weight: 500; color: #444; }
+#summary-table td.item-unit { font-size: 11px; color: #bbb; }
+#summary-table td.item-total {
+  text-align: right; font-weight: 700; color: #1a1a2e;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+#summary-table td.item-total:hover { color: #3949ab; text-decoration: underline; text-decoration-style: dotted; }
+#summary-table td.item-total.zero { color: #ddd; font-weight: 400; cursor: default; }
+#summary-table td.item-total.zero:hover { color: #ddd; text-decoration: none; }
+
+/* ── Right: Payment ── */
+#right-panel { overflow-y: auto; background: #fff; display: flex; flex-direction: column; }
+
+/* Position tabs */
+.pos-tabs { display: flex; border-bottom: 1px solid #ececec; }
+.pos-tab {
+  flex: 1; padding: 13px 8px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #aaa; border-bottom: 3px solid transparent;
+  transition: all 0.15s; user-select: none; background: none; border-top: none; border-left: none; border-right: none;
+}
+.pos-tab:hover { color: #3949ab; background: #f8f9fb; }
+.pos-tab.active { color: #3949ab; border-bottom-color: #3949ab; }
+.pos-tab .sub { font-size: 10px; font-weight: 400; display: block; opacity: 0.7; margin-top: 1px; }
+
+/* Payment meta */
+.pay-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
+.meta-field label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+.meta-field input {
+  width: 100%; border: 1px solid #e4e4e4; border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; color: #333; background: #fafafa;
+}
+.meta-field input:focus { outline: none; border-color: #3949ab; }
+
+/* Payment table */
+#pay-wrap { padding: 0 20px; flex: 1; }
+#pay-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#pay-table thead th {
+  padding: 9px 10px; text-align: left;
+  font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px;
+  border-bottom: 2px solid #e8e8e8; white-space: nowrap;
+}
+#pay-table thead th.r { text-align: right; }
+#pay-table tbody td { padding: 10px 10px; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+#pay-table tbody tr:last-child td { border-bottom: none; }
+#pay-table td.code { font-size: 10px; font-weight: 700; color: #aaa; }
+#pay-table td.name { color: #333; }
+#pay-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+#pay-table td.rate { color: #666; }
+#pay-table td.amount { font-weight: 700; color: #1a1a2e; }
+#pay-table td.dim { color: #ccc; font-weight: 400; }
+#pay-table tr.na-row td { opacity: 0.3; }
+.formula-note { font-size: 10px; color: #bbb; margin-left: 4px; }
+.qty-input {
+  width: 90px; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 8px; font-size: 13px; text-align: right; color: #1a1a2e;
+  background: #fafafa; font-variant-numeric: tabular-nums;
+}
+.qty-input:focus { outline: none; border-color: #3949ab; background: #fff; }
+.qty-input:disabled { background: #f5f5f5; color: #ccc; border-color: #f0f0f0; }
+
+/* Payment total + footer */
+.pay-footer {
+  padding: 14px 20px; border-top: 2px solid #1a1a2e;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; bottom: 0; background: #fff;
+}
+.total-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+.total-amount { font-size: 22px; font-weight: 800; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+.btn-download {
+  background: #1a1a2e; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-download:hover { background: #2c2c4a; }
+.btn-save {
+  background: #2e7d32; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-save:hover { background: #1b5e20; }
+
+/* ── Breakdown drawer ── */
+#breakdown {
+  position: fixed; bottom: -100%; left: 0; right: 0; height: 46vh;
+  background: #fff; border-top: 2px solid #1a1a2e;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
+  transition: bottom 0.28s cubic-bezier(0.4,0,0.2,1);
+  z-index: 400; display: flex; flex-direction: column;
+}
+#breakdown.open { bottom: 0; }
+#breakdown-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+}
+#breakdown-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+#breakdown-subtitle { font-size: 11px; color: #aaa; margin-top: 1px; }
+#breakdown-close {
+  background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; color: #666; cursor: pointer;
+}
+#breakdown-close:hover { background: #f5f5f5; }
+#breakdown-body { flex: 1; overflow-y: auto; }
+#breakdown-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#breakdown-table thead th { background: #f8f9fb; padding: 8px 14px; text-align: left; font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; position: sticky; top: 0; border-bottom: 1px solid #e8e8e8; }
+#breakdown-table thead th.r { text-align: right; }
+#breakdown-table tbody td { padding: 9px 14px; border-bottom: 1px solid #f5f5f5; color: #333; }
+#breakdown-table tbody tr:last-child td { border-bottom: none; }
+#breakdown-table td.r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <a id="back-btn" href="index.html">← Home</a>
+  <div id="breadcrumb">
+    <span id="bc-project"></span>
+    <span id="bc-sep" style="display:none;opacity:.4"> / </span>
+    <span id="bc-folder" style="opacity:.55"></span>
+  </div>
+  <span id="header-file"></span>
+  <button id="change-file-btn" style="display:none">Change file</button>
+</header>
+
+<!-- ═══ UPLOAD ═══ -->
+<div id="upload-overlay">
+  <div id="upload-zone">
+    <span class="icon">📂</span>
+    <h2>Drop your production report</h2>
+    <p>or click to browse files</p>
+    <div class="fmt-tags">
+      <span class="fmt-tag">XLSX</span>
+      <span class="fmt-tag">XLS</span>
+      <span class="fmt-tag">CSV</span>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+  </div>
+</div>
+
+<!-- ═══ FILTER BAR ═══ -->
+<div id="filter-bar">
+  <span class="filter-label">Subsector</span>
+  <select class="filter-select" id="f-subsector"><option value="">All</option></select>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Crew</span>
+  <select class="filter-select" id="f-crew"><option value="">All</option></select>
+  <span id="record-count"></span>
+</div>
+
+<!-- ═══ MAIN SPLIT ═══ -->
+<div id="app">
+
+  <!-- LEFT: Summary -->
+  <div id="left-panel">
+    <div class="panel-header">
+      <span class="panel-title">Production Summary</span>
+      <span class="panel-hint">Click a total to see breakdown</span>
+    </div>
+    <div id="summary-wrap">
+      <table id="summary-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Unit</th>
+            <th class="r">Total</th>
+          </tr>
+        </thead>
+        <tbody id="summary-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT: Payment Template -->
+  <div id="right-panel">
+    <div class="pos-tabs">
+      <button class="pos-tab active" data-pos="primero">Primero <span class="sub">1st Position</span></button>
+      <button class="pos-tab"        data-pos="segundo">Segundo <span class="sub">2nd Position</span></button>
+      <button class="pos-tab"        data-pos="tercero">Tercero <span class="sub">3rd Position</span></button>
+    </div>
+
+    <div class="pay-meta">
+      <div class="meta-field"><label>Project</label><input id="meta-project" type="text" placeholder="Selma, Alabama"></div>
+      <div class="meta-field"><label>Period</label><input id="meta-period" type="text" placeholder="e.g. Mar 1–7, 2026"></div>
+      <div class="meta-field">
+        <label id="meta-crew-label" style="color:#3949ab">▸ Primero — Name</label>
+        <input id="meta-crew-name" type="text" placeholder="Crew member name">
+      </div>
+    </div>
+
+    <div id="pay-wrap">
+      <table id="pay-table">
+        <thead>
+          <tr>
+            <th style="width:90px">Code</th>
+            <th>Description</th>
+            <th class="r" style="width:90px">Qty</th>
+            <th class="r" style="width:70px">Rate</th>
+            <th class="r" style="width:90px">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="pay-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="pay-footer">
+      <div>
+        <div class="total-label">Total Payment</div>
+        <div class="total-amount" id="pay-total">$0.00</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn-save" id="btn-save" style="display:none">💾 Save Payroll</button>
+        <button class="btn-download" id="btn-download">⬇ Download PDF</button>
+      </div>
+    </div>
+    <!-- Save toast -->
+    <div id="save-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
+      ✓ Payroll saved to week folder
+      &nbsp;&nbsp;<a id="toast-back" href="#" style="color:#7986cb;text-decoration:none;font-weight:700">← Back to week</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BREAKDOWN DRAWER ═══ -->
+<div id="breakdown">
+  <div id="breakdown-header">
+    <div>
+      <div id="breakdown-title">Breakdown</div>
+      <div id="breakdown-subtitle"></div>
+    </div>
+    <button id="breakdown-close">Close ✕</button>
+  </div>
+  <div id="breakdown-body">
+    <table id="breakdown-table">
+      <thead><tr id="breakdown-thead-row"></tr></thead>
+      <tbody id="breakdown-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const SB = supabase.createClient(
+  'https://pmcllnbkzoztwpsxdbgf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtY2xsbmJrem96dHdwc3hkYmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzA2OTIsImV4cCI6MjA5MTI0NjY5Mn0.NOt__NLICA5Bf9HYruBGQ8mJLq-YFAOHo_2r7RJQl5U'
+);
+async function syncToCloud(d) {
+  try {
+    await SB.from('app_state').upsert({ id: 'dccable_v2', data: d, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('Supabase sync failed:', e); }
+}
+
+// ─── DATA DEFINITIONS ────────────────────────────────────────────────────────
+
+// Items in display order — divBy2 = true means qty ÷ 2 in payment template
+const ITEMS = [
+  { key: 'strand',       label: 'Strand',              unit: 'ft',  csvCol: 'strandLength',        divBy2: false },
+  { key: 'fiber',        label: 'Fiber',               unit: 'ft',  csvCol: 'cableLengthADSS',     divBy2: false },
+  { key: 'tree_trim',    label: 'Tree Trim',           unit: 'ft',  csvCol: 'treeTrimLength',       divBy2: false },
+  { key: 'snowshoe',     label: 'Snowshoe',            unit: 'ea',  csvCol: 'numSnowshoes',         divBy2: true  },
+  { key: 'mr_simple',    label: 'Make Ready (100)',     unit: 'ea',  csvCol: 'simpleMakeready',      divBy2: true  },
+  { key: 'mr_complex',   label: 'Make Ready (350-2000)',unit: 'ea',  csvCol: 'complexMakeready',     divBy2: true  },
+  { key: 'mr_drop',      label: 'Make Ready',          unit: 'ea',  csvCol: 'dropMakeready',        divBy2: true  },
+  { key: 'down_guy',     label: 'Down Guy',            unit: 'ea',  csvCol: 'downGuysInstalled',    divBy2: true  },
+  { key: 'overhead_guy', label: 'Overhead Guy',        unit: 'ea',  csvCol: 'overheadGuyInstalled', divBy2: true  },
+  { key: 'anchor',       label: 'Anchor',              unit: 'ea',  taskType: 'install_anchor',     divBy2: true  },
+  { key: 'riser',        label: 'Riser',               unit: 'ea',  csvCol: 'numRisers',            divBy2: true  },
+];
+
+const RATES = {
+  strand:       { code: 'FP23F',         primero: 0.14, segundo: 0.10, tercero: 0.05 },
+  fiber:        { code: 'FP21F',         primero: 0.14, segundo: 0.10, tercero: 0.05 },
+  tree_trim:    { code: 'FPTT',          primero: 0.40, segundo: 0.30, tercero: 0.05 },
+  snowshoe:     { code: 'FPSS',          primero: 20,   segundo: 20,   tercero: null  },
+  mr_simple:    { code: 'FMMST 100',     primero: 0.12, segundo: 0.08, tercero: null  },
+  mr_complex:   { code: 'FMMST 350-2000',primero: 0.13, segundo: 0.09, tercero: null  },
+  mr_drop:      { code: 'MAKE READY',    primero: 15,   segundo: 15,   tercero: null  },
+  down_guy:     { code: 'FPDG',          primero: 7,    segundo: 7,    tercero: null  },
+  overhead_guy: { code: 'FPOG',          primero: 9,    segundo: 9,    tercero: null  },
+  anchor:       { code: 'FPAN',          primero: 25,   segundo: 25,   tercero: null  },
+  riser:        { code: 'FPRS',          primero: 10,   segundo: 10,   tercero: null  },
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let allRows = [], headers = [];
+let filterSubsector = '', filterCrew = '';
+let currentPos = 'primero';
+let payQtys = {};   // { key: raw qty } — editable, auto-filled on filter change
+let crewNames = { primero: '', segundo: '', tercero: '' };
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+
+function parseNum(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const s = String(v).trim();
+  if (/^(yes|true)$/i.test(s)) return 1;
+  if (/^(no|false|n\/a|na|please select|-)$/i.test(s)) return 0;
+  const n = parseFloat(s.replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtNum(n, unit) {
+  if (n === 0) return '—';
+  return Math.round(n).toLocaleString() + (unit ? ' ' + unit : '');
+}
+function fmtMoney(n) {
+  if (n === 0) return '—';
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtRate(r) {
+  if (r === null) return 'N/A';
+  return r < 1 ? '$' + r.toFixed(2) : '$' + r.toFixed(0);
+}
+function taskLabel(s) { return s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : s; }
+function parseDate(v) { const m = String(v||'').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; }
+
+// ─── COMPUTED QUANTITIES ──────────────────────────────────────────────────────
+
+function getFilteredRows() {
+  return allRows.filter(r => {
+    if (filterSubsector && String(r['subsector']||'').trim() !== filterSubsector) return false;
+    if (filterCrew      && String(r['last editing user']||'').trim() !== filterCrew)    return false;
+    return true;
+  });
+}
+
+function calcQty(item, rows) {
+  if (item.taskType) {
+    return rows.filter(r => String(r['taskType']||'').trim() === item.taskType).length;
+  }
+  if (!headers.includes(item.csvCol)) return 0;
+  let s = 0; rows.forEach(r => { s += parseNum(r[item.csvCol]); }); return Math.round(s);
+}
+
+// ─── FILE LOADING ─────────────────────────────────────────────────────────────
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (raw.length < 2) { alert('File appears empty.'); return; }
+
+      headers = raw[0].map(h => String(h).trim());
+      allRows = raw.slice(1)
+        .map(row => { const o = {}; headers.forEach((h,i) => { o[h]=row[i]??''; }); return o; })
+        .filter(r => r['taskId'] || r['taskType']);
+
+      filterSubsector = ''; filterCrew = '';
+
+      // Populate filter dropdowns
+      populateSelect('f-subsector', [...new Set(allRows.map(r => String(r['subsector']||'').trim()).filter(Boolean))].sort());
+      populateSelect('f-crew',      [...new Set(allRows.map(r => String(r['last editing user']||'').trim()).filter(Boolean))].sort());
+
+      document.getElementById('header-file').textContent = file.name;
+      document.getElementById('change-file-btn').style.display = '';
+      document.getElementById('upload-overlay').style.display = 'none';
+      document.getElementById('filter-bar').classList.add('visible');
+      document.getElementById('app').classList.add('visible');
+
+      renderAll();
+    } catch(err) { alert('Could not read file.\n' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateSelect(id, values) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">All (${values.length})</option>` +
+    values.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+
+function renderAll() {
+  const rows = getFilteredRows();
+  document.getElementById('record-count').textContent = `${rows.length.toLocaleString()} records`;
+  // Auto-fill quantities from filtered data
+  ITEMS.forEach(item => { payQtys[item.key] = calcQty(item, rows); });
+  renderSummary(rows);
+  renderPayment();
+}
+
+// ─── SUMMARY TABLE ────────────────────────────────────────────────────────────
+
+function renderSummary(rows) {
+  const tbody = document.getElementById('summary-tbody');
+
+  const rowsHtml = ITEMS.map(item => {
+    const qty = calcQty(item, rows);
+    const isZero = qty === 0;
+    return `<tr>
+      <td class="item-name">${item.label}</td>
+      <td class="item-unit">${item.unit}</td>
+      <td class="item-total ${isZero ? 'zero' : ''}"
+          data-key="${item.key}"
+          title="${isZero ? '' : 'Click to see breakdown'}">
+        ${isZero ? '—' : Math.round(qty).toLocaleString()}
+      </td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rowsHtml;
+
+  // Bind click on non-zero totals
+  tbody.querySelectorAll('td.item-total:not(.zero)').forEach(td => {
+    td.addEventListener('click', () => openBreakdown(td.dataset.key, rows));
+  });
+}
+
+// ─── PAYMENT TABLE ────────────────────────────────────────────────────────────
+
+function renderPayment() {
+  const tbody = document.getElementById('pay-tbody');
+
+  tbody.innerHTML = ITEMS.map(item => {
+    const rate  = RATES[item.key][currentPos];
+    const isNA  = rate === null;
+    const rawQty = payQtys[item.key] || 0;
+    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
+    const amt    = isNA ? 0 : payQty * rate;
+
+    return `<tr>
+      <td class="code">${RATES[item.key].code}</td>
+      <td class="name">${item.label}</td>
+      <td style="padding:6px 10px">
+        <input class="qty-input" type="number" min="0" step="1"
+          data-key="${item.key}" value="${rawQty > 0 ? Math.round(rawQty) : ''}" placeholder="0"
+          ${isNA ? 'disabled' : ''}>
+        ${item.divBy2 && !isNA ? '<span class="formula-note">÷2</span>' : ''}
+      </td>
+      <td class="r rate">${fmtRate(rate)}</td>
+      <td class="r amount" data-amt="${item.key}" style="${isNA ? 'color:#ccc' : amt===0 ? 'color:#ddd' : ''}">${isNA ? 'N/A' : fmtMoney(amt)}</td>
+    </tr>`;
+  }).join('') + `
+    <tr>
+      <td class="code">—</td>
+      <td class="name" style="color:#c0392b">Discount (Hotel)</td>
+      <td colspan="2" style="color:#aaa;padding:10px;font-size:12px">fixed</td>
+      <td class="r amount" style="color:#c0392b">-$137.00</td>
+    </tr>`;
+
+  updatePaymentTotals();
+
+  // Bind qty inputs — update live without re-rendering
+  tbody.querySelectorAll('.qty-input').forEach(input => {
+    input.addEventListener('input', e => {
+      payQtys[e.target.dataset.key] = parseFloat(e.target.value) || 0;
+      updatePaymentTotals();
+    });
+  });
+}
+
+function updatePaymentTotals() {
+  let total = -137;
+  ITEMS.forEach(item => {
+    const rate   = RATES[item.key][currentPos];
+    const isNA   = rate === null;
+    const rawQty = payQtys[item.key] || 0;
+    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
+    const amt    = isNA ? 0 : payQty * rate;
+    total += amt;
+    const cell = document.querySelector(`td[data-amt="${item.key}"]`);
+    if (cell) {
+      cell.textContent = isNA ? 'N/A' : fmtMoney(amt);
+      cell.style.color = isNA ? '#ccc' : amt === 0 ? '#ddd' : '';
+    }
+  });
+  document.getElementById('pay-total').textContent = fmtMoney(total);
+}
+
+// ─── BREAKDOWN DRAWER ─────────────────────────────────────────────────────────
+
+function openBreakdown(key, rows) {
+  const item = ITEMS.find(i => i.key === key);
+  if (!item) return;
+
+  let detailRows;
+  if (item.taskType) {
+    detailRows = rows
+      .filter(r => String(r['taskType']||'').trim() === item.taskType)
+      .map(r => ({
+        date: parseDate(r['completed date']),
+        address: String(r['street address']||r['assetID']||'').trim(),
+        crew: String(r['last editing user']||'').trim(),
+        qty: 1,
+      }));
+  } else {
+    detailRows = rows
+      .filter(r => parseNum(r[item.csvCol]) > 0)
+      .map(r => ({
+        date: parseDate(r['completed date']),
+        address: String(r['street address']||r['assetID']||'').trim(),
+        crew: String(r['last editing user']||'').trim(),
+        qty: parseNum(r[item.csvCol]),
+      }))
+      .sort((a, b) => b.qty - a.qty);
+  }
+
+  const total = detailRows.reduce((s, r) => s + r.qty, 0);
+  const qtyLabel = item.unit === 'ft' ? 'Footage (ft)' : 'Qty';
+
+  document.getElementById('breakdown-title').textContent = `${item.label} — Breakdown`;
+  document.getElementById('breakdown-subtitle').textContent =
+    `${detailRows.length} records · Total: ${Math.round(total).toLocaleString()} ${item.unit}`;
+
+  document.getElementById('breakdown-thead-row').innerHTML = `
+    <th>Date</th><th>Address / Asset</th><th>Crew</th><th class="r">${qtyLabel}</th>`;
+
+  document.getElementById('breakdown-tbody').innerHTML = detailRows.map(r => `<tr>
+    <td>${r.date||'—'}</td>
+    <td>${r.address||'—'}</td>
+    <td style="font-size:11px;color:#888">${r.crew||'—'}</td>
+    <td class="r">${Math.round(r.qty).toLocaleString()}</td>
+  </tr>`).join('');
+
+  document.getElementById('breakdown').classList.add('open');
+}
+
+document.getElementById('breakdown-close').addEventListener('click', () => {
+  document.getElementById('breakdown').classList.remove('open');
+});
+
+// ─── POSITION TABS ────────────────────────────────────────────────────────────
+
+const CREW_LABELS = { primero: '▸ Primero — Name', segundo: '▸ Segundo — Name', tercero: '▸ Tercero — Name' };
+const CREW_COLORS = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' };
+
+function syncCrewName() {
+  crewNames[currentPos] = document.getElementById('meta-crew-name').value;
+}
+
+document.querySelectorAll('.pos-tab').forEach(btn =>
+  btn.addEventListener('click', () => {
+    syncCrewName();
+    currentPos = btn.dataset.pos;
+    document.querySelectorAll('.pos-tab').forEach(b => b.classList.toggle('active', b === btn));
+    const labelEl = document.getElementById('meta-crew-label');
+    labelEl.textContent = CREW_LABELS[currentPos];
+    labelEl.style.color = CREW_COLORS[currentPos];
+    document.getElementById('meta-crew-name').value = crewNames[currentPos];
+    renderPayment();   // re-render to update rate column + recalc
+  })
+);
+
+// ─── FILTER EVENTS ────────────────────────────────────────────────────────────
+
+document.getElementById('f-subsector').addEventListener('change', e => {
+  filterSubsector = e.target.value; renderAll();
+});
+document.getElementById('f-crew').addEventListener('change', e => {
+  filterCrew = e.target.value; renderAll();
+});
+
+// ─── UPLOAD EVENTS ────────────────────────────────────────────────────────────
+
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+
+uploadZone.addEventListener('click',     () => fileInput.click());
+uploadZone.addEventListener('dragover',  e  => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop',      e  => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+document.getElementById('change-file-btn').addEventListener('click', () => {
+  allRows = []; headers = []; fileInput.value = '';
+  filterSubsector = ''; filterCrew = '';
+  document.getElementById('upload-overlay').style.display = '';
+  document.getElementById('filter-bar').classList.remove('visible');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('change-file-btn').style.display = 'none';
+  document.getElementById('header-file').textContent = '';
+  document.getElementById('breakdown').classList.remove('open');
+});
+
+// ─── DOWNLOAD / PRINT ─────────────────────────────────────────────────────────
+
+document.getElementById('btn-download').addEventListener('click', () => {
+  const pos     = { primero: 'Primero (1st)', segundo: 'Segundo (2nd)', tercero: 'Tercero (3rd)' }[currentPos];
+  const project = document.getElementById('meta-project').value || 'Selma, Alabama';
+  const period  = document.getElementById('meta-period').value  || '—';
+  syncCrewName();
+  const crew    = crewNames[currentPos] || '—';
+  const today   = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  // Use current payQtys (which may include manual edits)
+  let total = 0;
+  let tableRows = ITEMS.map(item => {
+    const rate   = RATES[item.key][currentPos];
+    const isNA   = rate === null;
+    const rawQty = payQtys[item.key] || 0;
+    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
+    const amt    = isNA ? 0 : payQty * rate;
+    total += amt;
+
+    const qtyStr  = isNA || payQty === 0 ? '—' : Math.round(payQty).toLocaleString() + (item.divBy2 && rawQty > 0 ? ' (÷2)' : '');
+    const rateStr = isNA ? 'N/A' : fmtRate(rate);
+    const amtStr  = isNA ? 'N/A' : (amt === 0 ? '—' : fmtMoney(amt));
+    const dim     = isNA || amt === 0;
+
+    return `<tr class="${dim ? 'dim' : ''}">
+      <td class="code">${RATES[item.key].code}</td>
+      <td>${item.label}</td>
+      <td class="r">${qtyStr}</td>
+      <td class="r">${rateStr}</td>
+      <td class="r bold">${amtStr}</td>
+    </tr>`;
+  }).join('');
+
+  const HOTEL_DISCOUNT = -137;
+  total += HOTEL_DISCOUNT;
+  tableRows += `<tr class="discount-row">
+    <td class="code">—</td>
+    <td>Discount (Hotel)</td>
+    <td class="r" colspan="2">fixed</td>
+    <td class="r bold" style="color:#c0392b">-$137.00</td>
+  </tr>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Payment — ${pos}</title>
+<style>
+  @page { margin: 0.9in; size: letter; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #111; }
+  .top { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 14px; border-bottom: 3px solid #1a1a2e; margin-bottom: 18px; }
+  .company { font-size: 20px; font-weight: 800; color: #1a1a2e; }
+  .doc-info { font-size: 12px; color: #888; margin-top: 4px; }
+  .generated { font-size: 11px; color: #aaa; }
+  .meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; background: #f8f9fb; padding: 12px 14px; border-radius: 6px; margin-bottom: 20px; }
+  .meta-item label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #aaa; display: block; margin-bottom: 3px; }
+  .meta-item span { font-size: 13px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1a1a2e; color: rgba(255,255,255,0.75); padding: 9px 11px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  th.r { text-align: right; }
+  td { padding: 10px 11px; border-bottom: 1px solid #eee; }
+  tr.dim td { color: #ccc; }
+  .code { font-size: 10px; font-weight: 700; color: #999; }
+  .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .bold { font-weight: 700; }
+  .discount-row td { color: #c0392b; font-style: italic; }
+  .total-row td { border-top: 2px solid #1a1a2e; border-bottom: none; padding-top: 12px; font-size: 14px; font-weight: 800; }
+  .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #eee; font-size: 10px; color: #bbb; display: flex; justify-content: space-between; }
+</style></head><body>
+<div class="top">
+  <div>
+    <div class="company">DC Cable LLC</div>
+    <div class="doc-info">Payment Report &nbsp;·&nbsp; ${pos}</div>
+  </div>
+  <div class="generated">${today}</div>
+</div>
+<div class="meta">
+  <div class="meta-item"><label>Project</label><span>${project}</span></div>
+  <div class="meta-item"><label>Pay Period</label><span>${period}</span></div>
+  <div class="meta-item"><label>Crew / Employee</label><span>${crew}</span></div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:100px">Code</th>
+    <th>Description</th>
+    <th class="r" style="width:100px">Quantity</th>
+    <th class="r" style="width:80px">Rate</th>
+    <th class="r" style="width:100px">Amount</th>
+  </tr></thead>
+  <tbody>
+    ${tableRows}
+    <tr class="total-row">
+      <td colspan="3"></td>
+      <td class="r">TOTAL</td>
+      <td class="r">${fmtMoney(total)}</td>
+    </tr>
+  </tbody>
+</table>
+<div class="footer">
+  <span>DC Cable LLC — Selma, Alabama</span>
+  <span>Position: ${pos}</span>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+});
+
+// ─── URL CONTEXT + SAVE PAYROLL ──────────────────────────────────────────────
+(function () {
+  const p       = new URLSearchParams(location.search);
+  const pid     = p.get('pid')     || '';
+  const fid     = p.get('fid')     || '';
+  const wid     = p.get('wid')     || '';
+  const project = p.get('project') || '';
+  const folder  = p.get('folder')  || '';
+  const week    = p.get('week')    || '';
+
+  // Breadcrumb
+  if (project) {
+    document.getElementById('bc-project').textContent = project;
+    document.getElementById('meta-project').value     = project;
+  }
+  if (folder || week) {
+    document.getElementById('bc-folder').textContent = week ? folder + ' / ' + week : folder;
+    document.getElementById('bc-sep').style.display  = '';
+  }
+
+  // Show Save button only if opened from a week folder
+  if (pid && fid && wid) {
+    const saveBtn = document.getElementById('btn-save');
+    saveBtn.style.display = '';
+
+    saveBtn.addEventListener('click', () => {
+      const KEY  = 'dccable_v2';
+      const raw  = localStorage.getItem(KEY);
+      if (!raw) {
+        alert('No project data found.\nMake sure you opened this editor from a Week folder in the home screen.');
+        return;
+      }
+      const data   = JSON.parse(raw);
+      const proj   = data.find(x => x.id === pid);
+      if (!proj)   { alert(`Project not found (id: ${pid}).\nPlease navigate from the home screen.`); return; }
+      const folObj = proj.folders?.find(x => x.id === fid);
+      if (!folObj) { alert(`Folder not found (id: ${fid}).\nPlease navigate from the home screen.`); return; }
+      const wkObj  = folObj.weeks?.find(x => x.id === wid);
+      if (!wkObj)  { alert(`Week not found (id: ${wid}).\nPlease navigate from the home screen.`); return; }
+
+      if (!wkObj.payrolls) wkObj.payrolls = [];
+
+      syncCrewName();
+      const crew      = crewNames[currentPos] || '—';
+      const period    = document.getElementById('meta-period').value.trim() || '—';
+      const totalText = document.getElementById('pay-total').textContent;
+
+      wkObj.payrolls.push({
+        id:       Date.now().toString(36),
+        position: currentPos,
+        crew,
+        period,
+        qtys:     { ...payQtys },
+        total:    parseFloat(totalText.replace(/[$,]/g, '')) || 0,
+        savedAt:  new Date().toISOString(),
+      });
+      localStorage.setItem(KEY, JSON.stringify(data));
+      syncToCloud(data);
+
+      const toast = document.getElementById('save-toast');
+      toast.style.display = '';
+      setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    });
+  }
+}());
+</script>
+</body>
+</html>

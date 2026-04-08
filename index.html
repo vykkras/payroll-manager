@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC Cable</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+/* ── Header ── */
+header { background: #1a1a2e; color: #fff; padding: 0 28px; height: 56px; display: flex; align-items: center; gap: 12px; }
+.logo { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.logo span { color: #7986cb; }
+.header-sub { font-size: 12px; color: rgba(255,255,255,0.3); }
+
+/* ── Breadcrumb ── */
+#bc-bar {
+  background: #fff; border-bottom: 1px solid #e8e8e8;
+  padding: 0 28px; height: 42px;
+  display: flex; align-items: center; gap: 6px; font-size: 13px;
+}
+.bc { color: #3949ab; cursor: pointer; font-weight: 500; padding: 2px 0; }
+.bc:hover { text-decoration: underline; }
+.bc.current { color: #333; font-weight: 600; cursor: default; }
+.bc.current:hover { text-decoration: none; }
+.bc-arrow { color: #ccc; font-size: 11px; }
+
+/* ── Views ── */
+.view { display: none; padding: 28px; max-width: 1080px; margin: 0 auto; }
+.view.on { display: block; }
+
+/* ── Page header ── */
+.ph { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+.ph-left h2 { font-size: 20px; font-weight: 700; }
+.ph-left p  { font-size: 13px; color: #aaa; margin-top: 3px; }
+.btn-add {
+  background: #1a1a2e; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btn-add:hover { background: #2c2c4a; }
+.btn-editor {
+  background: #3949ab; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-block;
+}
+.btn-editor:hover { background: #303f9f; }
+
+/* ── Card grid ── */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+
+/* ── Project card ── */
+.proj-card {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
+  cursor: pointer; transition: all 0.15s; overflow: hidden; position: relative;
+}
+.proj-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); transform: translateY(-1px); }
+.proj-card .color-bar { height: 5px; }
+.proj-card .card-body { padding: 18px 18px 14px; }
+.proj-card .c-icon { font-size: 26px; margin-bottom: 10px; display: block; }
+.proj-card .c-name { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+.proj-card .c-meta { font-size: 12px; color: #aaa; }
+
+/* ── Folder / Week card ── */
+.folder-card {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
+  padding: 20px 18px; cursor: pointer; transition: all 0.15s; position: relative;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.folder-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.09); transform: translateY(-1px); }
+.f-icon { font-size: 30px; }
+.f-name { font-size: 14px; font-weight: 700; }
+.f-meta { font-size: 12px; color: #aaa; }
+
+/* ── Hover delete ── */
+.del-btn {
+  display: none; position: absolute; top: 10px; right: 10px;
+  background: rgba(255,255,255,0.95); border: 1px solid #e0e0e0;
+  border-radius: 5px; padding: 3px 8px; font-size: 11px; cursor: pointer; color: #888;
+}
+.del-btn:hover { color: #c0392b; border-color: #c0392b; }
+.proj-card:hover .del-btn,
+.folder-card:hover .del-btn { display: block; }
+
+/* ── Empty state ── */
+.empty { text-align: center; padding: 72px 20px; color: #ccc; grid-column: 1/-1; }
+.empty .e-icon { font-size: 48px; margin-bottom: 14px; display: block; }
+.empty h3 { font-size: 15px; color: #bbb; margin-bottom: 6px; }
+.empty p  { font-size: 13px; }
+
+/* ── Payroll list ── */
+#payroll-list { display: flex; flex-direction: column; gap: 12px; }
+.payroll-card {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
+  padding: 16px 20px; display: flex; align-items: center; gap: 20px;
+}
+.pos-badge {
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.3px; white-space: nowrap; flex-shrink: 0;
+}
+.pos-primero { background: #e8eaf6; color: #3949ab; }
+.pos-segundo { background: #e8f5e9; color: #2e7d32; }
+.pos-tercero { background: #fff3e0; color: #e65100; }
+.pr-crew  { font-size: 14px; font-weight: 600; flex: 1; min-width: 0; }
+.pr-period { font-size: 12px; color: #aaa; margin-top: 2px; }
+.pr-total { font-size: 18px; font-weight: 800; color: #1a1a2e; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pr-date  { font-size: 11px; color: #bbb; text-align: right; white-space: nowrap; }
+.pr-del   { background: none; border: 1px solid #e8e8e8; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: #bbb; flex-shrink: 0; font-size: 13px; }
+.pr-del:hover { color: #c0392b; border-color: #c0392b; }
+
+.empty-payrolls { text-align: center; padding: 60px 20px; color: #ccc; }
+.empty-payrolls .e-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+.empty-payrolls p { font-size: 13px; }
+
+/* ── Modal ── */
+#modal-bg {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 500; align-items: center; justify-content: center;
+}
+#modal-bg.on { display: flex; }
+#modal-box { background: #fff; border-radius: 16px; padding: 28px; width: 420px; max-width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+#modal-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+.m-field { margin-bottom: 16px; }
+.m-field label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 7px; }
+.m-field input { width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #1a1a2e; background: #fafafa; }
+.m-field input:focus { outline: none; border-color: #3949ab; background: #fff; }
+.color-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.12s; }
+.swatch.on { border-color: #1a1a2e; transform: scale(1.18); }
+.m-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+.btn-cancel  { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; color: #666; }
+.btn-cancel:hover { background: #f5f5f5; }
+.btn-ok { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-ok:hover { background: #2c2c4a; }
+
+/* ── Delete confirm ── */
+#del-bg {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  z-index: 600; align-items: center; justify-content: center;
+}
+#del-bg.on { display: flex; }
+#del-box { background: #fff; border-radius: 14px; padding: 24px 28px; width: 360px; max-width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+#del-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+#del-box p  { font-size: 13px; color: #888; margin-bottom: 20px; }
+.btn-del { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DC <span>Cable</span></div>
+  <span class="header-sub">Production Reports</span>
+</header>
+
+<!-- Breadcrumb -->
+<div id="bc-bar">
+  <span class="bc" id="bc-home" onclick="goHome()">Home</span>
+  <span class="bc-arrow" id="bc-a1" style="display:none">›</span>
+  <span class="bc" id="bc-proj" style="display:none"></span>
+  <span class="bc-arrow" id="bc-a2" style="display:none">›</span>
+  <span class="bc" id="bc-fold" style="display:none"></span>
+  <span class="bc-arrow" id="bc-a3" style="display:none">›</span>
+  <span class="bc current" id="bc-week" style="display:none"></span>
+</div>
+
+<!-- VIEW: Home (projects) -->
+<div class="view on" id="view-home">
+  <div class="ph">
+    <div class="ph-left"><h2>Projects</h2><p>Select a project to manage reports and payments</p></div>
+    <button class="btn-add" onclick="openModal('project')">+ New Project</button>
+  </div>
+  <div class="grid" id="proj-grid"></div>
+</div>
+
+<!-- VIEW: Project (folders) -->
+<div class="view" id="view-project">
+  <div class="ph">
+    <div class="ph-left"><h2 id="proj-title"></h2><p id="proj-sub"></p></div>
+    <button class="btn-add" onclick="openModal('folder')">+ New Folder</button>
+  </div>
+  <div class="grid" id="folder-grid"></div>
+</div>
+
+<!-- VIEW: Folder (weeks) -->
+<div class="view" id="view-folder">
+  <div class="ph">
+    <div class="ph-left"><h2 id="folder-title"></h2><p id="folder-sub"></p></div>
+    <button class="btn-add" onclick="openModal('week')">+ New Week</button>
+  </div>
+  <div class="grid" id="week-grid"></div>
+</div>
+
+<!-- VIEW: Week (payrolls) -->
+<div class="view" id="view-week">
+  <div class="ph">
+    <div class="ph-left"><h2 id="week-title"></h2><p id="week-sub"></p></div>
+    <a class="btn-editor" id="open-editor-link" href="#">📋 Open Editor</a>
+  </div>
+  <div id="payroll-list"></div>
+</div>
+
+<!-- Modal -->
+<div id="modal-bg">
+  <div id="modal-box">
+    <h3 id="modal-title">New Project</h3>
+    <div class="m-field">
+      <label id="modal-label">Name</label>
+      <input id="modal-input" type="text" autocomplete="off">
+    </div>
+    <div class="m-field" id="color-row-wrap">
+      <label>Color</label>
+      <div class="color-row" id="color-row"></div>
+    </div>
+    <div class="m-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-ok" onclick="confirmModal()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div id="del-bg">
+  <div id="del-box">
+    <h3 id="del-title">Delete?</h3>
+    <p id="del-msg"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cancel" onclick="closeDel()">Cancel</button>
+      <button class="btn-del" onclick="execDel()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY    = 'dccable_v2';
+const COLORS = ['#1a1a2e','#1565c0','#2e7d32','#e65100','#6a1b9a','#00695c','#b71c1c','#f57f17'];
+const POS_LABELS = { primero: 'Primero · 1st', segundo: 'Segundo · 2nd', tercero: 'Tercero · 3rd' };
+
+// ── Supabase ─────────────────────────────────────────────────────────────────
+const SB = supabase.createClient(
+  'https://pmcllnbkzoztwpsxdbgf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtY2xsbmJrem96dHdwc3hkYmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzA2OTIsImV4cCI6MjA5MTI0NjY5Mn0.NOt__NLICA5Bf9HYruBGQ8mJLq-YFAOHo_2r7RJQl5U'
+);
+
+async function syncToCloud(d) {
+  try {
+    await SB.from('app_state').upsert({ id: KEY, data: d, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('Supabase sync failed:', e); }
+}
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+function load() { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+function save(d){ localStorage.setItem(KEY, JSON.stringify(d)); syncToCloud(d); }
+
+// ── State ────────────────────────────────────────────────────────────────────
+let data = load();
+let cur  = { pid: null, fid: null, wid: null };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function relDate(iso) {
+  const d = new Date(iso), now = new Date();
+  const days = Math.floor((now - d) / 86400000);
+  if (days === 0) return 'Today'; if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function fmtMoney(n) {
+  if (!n && n !== 0) return '—';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function getProj(pid) { return data.find(p => p.id === pid); }
+function getFolder(pid, fid) { return getProj(pid)?.folders?.find(f => f.id === fid); }
+function getWeek(pid, fid, wid) { return getFolder(pid,fid)?.weeks?.find(w => w.id === wid); }
+
+// ── Breadcrumb ───────────────────────────────────────────────────────────────
+function setBreadcrumb(level) {
+  // level: 0=home, 1=project, 2=folder, 3=week
+  const proj   = getProj(cur.pid);
+  const folder = getFolder(cur.pid, cur.fid);
+  const week   = getWeek(cur.pid, cur.fid, cur.wid);
+
+  const show = (id, txt, clickFn, isCurrent) => {
+    const el = document.getElementById(id);
+    el.style.display = '';
+    if (txt !== undefined) el.textContent = txt;
+    if (isCurrent) { el.className = 'bc current'; el.onclick = null; }
+    else           { el.className = 'bc'; el.onclick = clickFn; }
+  };
+  const hide = id => { document.getElementById(id).style.display = 'none'; };
+
+  // Home
+  if (level === 0) {
+    document.getElementById('bc-home').className = 'bc current';
+    document.getElementById('bc-home').onclick = null;
+    hide('bc-a1'); hide('bc-proj'); hide('bc-a2'); hide('bc-fold'); hide('bc-a3'); hide('bc-week');
+  } else {
+    document.getElementById('bc-home').className = 'bc';
+    document.getElementById('bc-home').onclick = goHome;
+  }
+  if (level >= 1) {
+    show('bc-a1'); show('bc-proj', proj?.name, () => goProject(cur.pid), level === 1);
+  } else { hide('bc-a1'); hide('bc-proj'); }
+  if (level >= 2) {
+    show('bc-a2'); show('bc-fold', folder?.name, () => goFolder(cur.pid, cur.fid), level === 2);
+  } else { hide('bc-a2'); hide('bc-fold'); }
+  if (level >= 3) {
+    show('bc-a3'); show('bc-week', week?.name, null, true);
+  } else { hide('bc-a3'); hide('bc-week'); }
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+function goHome() {
+  cur = { pid:null, fid:null, wid:null };
+  setBreadcrumb(0);
+  showView('view-home');
+  renderProjects();
+}
+
+function goProject(pid) {
+  cur.pid = pid; cur.fid = null; cur.wid = null;
+  const proj = getProj(pid);
+  document.getElementById('proj-title').textContent = proj.name;
+  document.getElementById('proj-sub').textContent = `${proj.folders?.length || 0} folder${proj.folders?.length !== 1 ? 's' : ''}`;
+  setBreadcrumb(1);
+  showView('view-project');
+  renderFolders();
+}
+
+function goFolder(pid, fid) {
+  cur.pid = pid; cur.fid = fid; cur.wid = null;
+  const folder = getFolder(pid, fid);
+  document.getElementById('folder-title').textContent = folder.name;
+  document.getElementById('folder-sub').textContent = `${folder.weeks?.length || 0} week${folder.weeks?.length !== 1 ? 's' : ''}`;
+  setBreadcrumb(2);
+  showView('view-folder');
+  renderWeeks();
+}
+
+function goWeek(pid, fid, wid) {
+  cur.pid = pid; cur.fid = fid; cur.wid = wid;
+  const proj   = getProj(pid);
+  const folder = getFolder(pid, fid);
+  const week   = getWeek(pid, fid, wid);
+  document.getElementById('week-title').textContent = week.name;
+  document.getElementById('week-sub').textContent = `${week.payrolls?.length || 0} payroll${week.payrolls?.length !== 1 ? 's' : ''} saved`;
+  setBreadcrumb(3);
+
+  // Set editor link with context
+  const params = new URLSearchParams({ pid, fid, wid, project: proj.name, folder: folder.name, week: week.name });
+  document.getElementById('open-editor-link').href = `report.html?${params}`;
+
+  showView('view-week');
+  renderPayrolls();
+}
+
+// ── Render: Projects ─────────────────────────────────────────────────────────
+function renderProjects() {
+  data = load();
+  const grid = document.getElementById('proj-grid');
+  if (!data.length) {
+    grid.innerHTML = `<div class="empty"><span class="e-icon">🗂️</span><h3>No projects yet</h3><p>Create your first project to get started</p></div>`;
+    return;
+  }
+  grid.innerHTML = data.map(p => `
+    <div class="proj-card" onclick="goProject('${p.id}')">
+      <div class="color-bar" style="background:${p.color};height:5px"></div>
+      <div class="card-body" style="padding:18px 18px 14px">
+        <span class="c-icon">🗂️</span>
+        <div class="c-name">${esc(p.name)}</div>
+        <div class="c-meta">${p.folders?.length||0} folder${p.folders?.length!==1?'s':''} · ${relDate(p.createdAt)}</div>
+      </div>
+      <button class="del-btn" onclick="event.stopPropagation();askDel('project','${p.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── Render: Folders ──────────────────────────────────────────────────────────
+function renderFolders() {
+  data = load();
+  const proj = getProj(cur.pid);
+  const grid = document.getElementById('folder-grid');
+  const folders = proj?.folders || [];
+  if (!folders.length) {
+    grid.innerHTML = `<div class="empty"><span class="e-icon">📁</span><h3>No folders yet</h3><p>Create a folder to organize by area or subsector</p></div>`;
+    return;
+  }
+  grid.innerHTML = folders.map(f => `
+    <div class="folder-card" onclick="goFolder('${cur.pid}','${f.id}')">
+      <span class="f-icon">📁</span>
+      <div class="f-name">${esc(f.name)}</div>
+      <div class="f-meta">${f.weeks?.length||0} week${f.weeks?.length!==1?'s':''} · ${relDate(f.createdAt)}</div>
+      <button class="del-btn" onclick="event.stopPropagation();askDel('folder','${f.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── Render: Weeks ────────────────────────────────────────────────────────────
+function renderWeeks() {
+  data = load();
+  const folder = getFolder(cur.pid, cur.fid);
+  const grid   = document.getElementById('week-grid');
+  const weeks  = folder?.weeks || [];
+  if (!weeks.length) {
+    grid.innerHTML = `<div class="empty"><span class="e-icon">📅</span><h3>No weeks yet</h3><p>Create a week folder to track payroll for that period</p></div>`;
+    return;
+  }
+  grid.innerHTML = weeks.map(w => `
+    <div class="folder-card" onclick="goWeek('${cur.pid}','${cur.fid}','${w.id}')">
+      <span class="f-icon">📅</span>
+      <div class="f-name">${esc(w.name)}</div>
+      <div class="f-meta">${w.payrolls?.length||0} payroll${w.payrolls?.length!==1?'s':''} · ${relDate(w.createdAt)}</div>
+      <button class="del-btn" onclick="event.stopPropagation();askDel('week','${w.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── Render: Payrolls ─────────────────────────────────────────────────────────
+function renderPayrolls() {
+  data = load();
+  const week = getWeek(cur.pid, cur.fid, cur.wid);
+  const list = document.getElementById('payroll-list');
+  const payrolls = week?.payrolls || [];
+
+  document.getElementById('week-sub').textContent =
+    `${payrolls.length} payroll${payrolls.length !== 1 ? 's' : ''} saved`;
+
+  if (!payrolls.length) {
+    list.innerHTML = `<div class="empty-payrolls">
+      <span class="e-icon">📄</span>
+      <p>No payrolls saved yet — open the editor to create one</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = payrolls.map(pr => `
+    <div class="payroll-card">
+      <span class="pos-badge pos-${pr.position}">${POS_LABELS[pr.position]||pr.position}</span>
+      <div style="flex:1;min-width:0">
+        <div class="pr-crew">${esc(pr.crew || '—')}</div>
+        <div class="pr-period">${esc(pr.period || '—')}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="pr-total">${fmtMoney(pr.total)}</div>
+        <div class="pr-date">${relDate(pr.savedAt)}</div>
+      </div>
+      <button class="pr-del" onclick="askDel('payroll','${pr.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+let modalMode = 'project';
+let selColor  = COLORS[1];
+
+function openModal(mode) {
+  modalMode = mode;
+  const titles = { project: 'New Project', folder: 'New Folder', week: 'New Week' };
+  const labels = { project: 'Project Name', folder: 'Folder Name', week: 'Week Name' };
+  const hints  = { project: 'e.g. Selma Alabama', folder: 'e.g. FDH_044', week: 'e.g. Week of March 10' };
+  document.getElementById('modal-title').textContent = titles[mode];
+  document.getElementById('modal-label').textContent = labels[mode];
+  document.getElementById('modal-input').value = '';
+  document.getElementById('modal-input').placeholder = hints[mode];
+  document.getElementById('color-row-wrap').style.display = mode === 'project' ? '' : 'none';
+
+  selColor = COLORS[1];
+  document.getElementById('color-row').innerHTML = COLORS.map(c =>
+    `<div class="swatch ${c===selColor?'on':''}" style="background:${c}" onclick="pickColor('${c}')"></div>`
+  ).join('');
+
+  document.getElementById('modal-bg').classList.add('on');
+  setTimeout(() => document.getElementById('modal-input').focus(), 50);
+}
+
+function pickColor(c) {
+  selColor = c;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', s.style.background === c));
+}
+
+function closeModal() { document.getElementById('modal-bg').classList.remove('on'); }
+
+function confirmModal() {
+  const name = document.getElementById('modal-input').value.trim();
+  if (!name) { document.getElementById('modal-input').focus(); return; }
+  data = load();
+
+  if (modalMode === 'project') {
+    data.push({ id: uid(), name, color: selColor, createdAt: new Date().toISOString(), folders: [] });
+    save(data); closeModal(); renderProjects();
+
+  } else if (modalMode === 'folder') {
+    const proj = getProj(cur.pid);
+    if (!proj.folders) proj.folders = [];
+    proj.folders.push({ id: uid(), name, createdAt: new Date().toISOString(), weeks: [] });
+    save(data); closeModal(); renderFolders();
+    document.getElementById('proj-sub').textContent = `${proj.folders.length} folder${proj.folders.length!==1?'s':''}`;
+
+  } else if (modalMode === 'week') {
+    const folder = getFolder(cur.pid, cur.fid);
+    if (!folder.weeks) folder.weeks = [];
+    folder.weeks.push({ id: uid(), name, createdAt: new Date().toISOString(), payrolls: [] });
+    save(data); closeModal(); renderWeeks();
+    document.getElementById('folder-sub').textContent = `${folder.weeks.length} week${folder.weeks.length!==1?'s':''}`;
+  }
+}
+
+document.getElementById('modal-input').addEventListener('keydown', e => { if (e.key==='Enter') confirmModal(); });
+document.getElementById('modal-bg').addEventListener('click', e => { if (e.target===document.getElementById('modal-bg')) closeModal(); });
+
+// ── Delete confirm ────────────────────────────────────────────────────────────
+let pending = null;
+
+function askDel(type, id) {
+  const msgs = {
+    project: ['Delete project?', 'This will permanently remove the project and all its contents.'],
+    folder:  ['Delete folder?',  'This will permanently remove the folder and all its weeks.'],
+    week:    ['Delete week?',    'This will permanently remove the week and all saved payrolls.'],
+    payroll: ['Delete payroll?', 'This payroll record will be permanently removed.'],
+  };
+  document.getElementById('del-title').textContent = msgs[type][0];
+  document.getElementById('del-msg').textContent   = msgs[type][1];
+  pending = { type, id };
+  document.getElementById('del-bg').classList.add('on');
+}
+
+function closeDel() { document.getElementById('del-bg').classList.remove('on'); pending = null; }
+
+function execDel() {
+  if (!pending) return;
+  data = load();
+  const { type, id } = pending;
+
+  if (type === 'project') {
+    data = data.filter(p => p.id !== id);
+    save(data); closeDel(); renderProjects();
+
+  } else if (type === 'folder') {
+    const proj = getProj(cur.pid);
+    proj.folders = proj.folders.filter(f => f.id !== id);
+    save(data); closeDel(); renderFolders();
+    document.getElementById('proj-sub').textContent = `${proj.folders.length} folder${proj.folders.length!==1?'s':''}`;
+
+  } else if (type === 'week') {
+    const folder = getFolder(cur.pid, cur.fid);
+    folder.weeks = folder.weeks.filter(w => w.id !== id);
+    save(data); closeDel(); renderWeeks();
+    document.getElementById('folder-sub').textContent = `${folder.weeks.length} week${folder.weeks.length!==1?'s':''}`;
+
+  } else if (type === 'payroll') {
+    const week = getWeek(cur.pid, cur.fid, cur.wid);
+    week.payrolls = week.payrolls.filter(p => p.id !== id);
+    save(data); closeDel(); renderPayrolls();
+  }
+}
+
+document.getElementById('del-bg').addEventListener('click', e => { if (e.target===document.getElementById('del-bg')) closeDel(); });
+document.addEventListener('keydown', e => { if (e.key==='Escape') { closeModal(); closeDel(); } });
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+setBreadcrumb(0);
+renderProjects(); // render immediately from localStorage
+
+(async () => {
+  try {
+    const { data: row } = await SB.from('app_state').select('data').eq('id', KEY).single();
+    if (row?.data) {
+      data = row.data;
+      localStorage.setItem(KEY, JSON.stringify(data));
+      renderProjects();
+    }
+  } catch(e) { /* offline — localStorage already rendered */ }
+})();
+</script>
+</body>
+</html>
