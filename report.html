@@ -935,8 +935,13 @@ function updateFilterDropdowns() {
 function renderAll() {
   const rows = getFilteredRows();
   document.getElementById('record-count').textContent = `${rows.length.toLocaleString()} records`;
-  // Auto-fill quantities from filtered data
-  activeItems.forEach(item => { if (item.csvCol || item.taskType) payQtys[item.key] = calcQty(item, rows); });
+  // Auto-fill quantities from filtered data; apply divBy2 at load time so payQtys stores payment qty
+  activeItems.forEach(item => {
+    if (item.csvCol || item.taskType) {
+      const raw = calcQty(item, rows);
+      payQtys[item.key] = item.divBy2 ? Math.round(raw / 2) : raw;
+    }
+  });
   baseQtys = { ...payQtys }; // snapshot for divide/reset
   renderSummary(rows);
   renderPayment();
@@ -978,16 +983,15 @@ function renderPayment() {
     if (item.key === editingRowKey) return renderEditRow(item);
     const rate   = item[currentPos];
     const isNA   = rate === null || rate === undefined;
-    const rawQty = payQtys[item.key] || 0;
-    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
-    const amt    = isNA ? 0 : payQty * rate;
+    const qty    = payQtys[item.key] || 0; // already payment qty (divBy2 applied at load)
+    const amt    = isNA ? 0 : qty * rate;
     return `<tr>
       <td><button class="pay-edit-btn" onclick="startEditRow('${item.key}')">✎</button></td>
       <td class="code">${escG(item.code)}</td>
       <td class="name">${escG(item.label)}</td>
       <td style="padding:6px 10px">
         <input class="qty-input" type="number" min="0" step="1"
-          data-key="${item.key}" value="${rawQty > 0 ? Math.round(rawQty) : ''}" placeholder="0"
+          data-key="${item.key}" value="${qty > 0 ? Math.round(qty) : ''}" placeholder="0"
           ${isNA ? 'disabled' : ''}>
         ${item.divBy2 && !isNA ? '<span class="formula-note">÷2</span>' : ''}
       </td>
@@ -1086,11 +1090,10 @@ function resetQtys() {
 function updatePaymentTotals() {
   let total = -137;
   activeItems.forEach(item => {
-    const rate   = item[currentPos];
-    const isNA   = rate === null || rate === undefined;
-    const rawQty = payQtys[item.key] || 0;
-    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
-    const amt    = isNA ? 0 : payQty * rate;
+    const rate = item[currentPos];
+    const isNA = rate === null || rate === undefined;
+    const qty  = payQtys[item.key] || 0; // already payment qty
+    const amt  = isNA ? 0 : qty * rate;
     total += amt;
     const cell = document.querySelector(`td[data-amt="${item.key}"]`);
     if (cell) {
@@ -1234,14 +1237,13 @@ document.getElementById('btn-download').addEventListener('click', () => {
   // Use current payQtys (which may include manual edits)
   let total = 0;
   let tableRows = activeItems.map(item => {
-    const rate   = item[currentPos];
-    const isNA   = rate === null || rate === undefined;
-    const rawQty = payQtys[item.key] || 0;
-    const payQty = item.divBy2 ? rawQty / 2 : rawQty;
-    const amt    = isNA ? 0 : payQty * rate;
+    const rate = item[currentPos];
+    const isNA = rate === null || rate === undefined;
+    const qty  = payQtys[item.key] || 0; // already payment qty
+    const amt  = isNA ? 0 : qty * rate;
     total += amt;
 
-    const qtyStr  = isNA || payQty === 0 ? '—' : Math.round(payQty).toLocaleString() + (item.divBy2 && rawQty > 0 ? ' (÷2)' : '');
+    const qtyStr  = isNA || qty === 0 ? '—' : Math.round(qty).toLocaleString() + (item.divBy2 ? ' (÷2)' : '');
     const rateStr = isNA ? 'N/A' : fmtRate(rate);
     const amtStr  = isNA ? 'N/A' : (amt === 0 ? '—' : fmtMoney(amt));
     const dim     = isNA || amt === 0;
