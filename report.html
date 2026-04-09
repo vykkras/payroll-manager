@@ -76,7 +76,7 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 /* ── Left: Summary ── */
 #left-panel {
   border-right: 1px solid #e0e0e0;
-  overflow-y: auto; background: #f8f9fb;
+  overflow: hidden; background: #f8f9fb;
   display: flex; flex-direction: column;
 }
 .panel-header {
@@ -88,7 +88,7 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 .panel-hint { font-size: 11px; color: #bbb; }
 
 /* Summary table */
-#summary-wrap { padding: 16px 20px; flex: 1; }
+#summary-wrap { padding: 16px 20px; flex: 1; overflow-y: auto; min-height: 0; }
 #summary-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
 #summary-table thead th {
   background: #1a1a2e; color: rgba(255,255,255,0.7);
@@ -279,7 +279,7 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 /* ── Manual grid ── */
 #manual-mode { display:none; flex-direction:column; flex:1; overflow:hidden; }
 #manual-mode.on { display:flex; }
-#file-mode { display:none; flex-direction:column; flex:1; overflow:hidden; }
+#file-mode { display:none; flex-direction:column; flex:1; overflow:hidden; min-height:0; }
 #file-mode.on { display:flex; }
 #manual-grid-wrap { flex:1; overflow:auto; padding:12px 20px; }
 .manual-table { width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap; }
@@ -397,11 +397,14 @@ tr.editing-row td { background:#f8f9ff; }
 
     <!-- Calculator -->
     <div id="calc-wrap">
-      <div class="panel-header" style="border-top:1px solid #ececec">
-        <span class="panel-title">Calculator</span>
-        <button id="calc-clear" style="font-size:11px;color:#bbb;background:none;border:none;cursor:pointer;padding:0">Clear</button>
-      </div>
-      <div style="padding:12px 20px 16px">
+      <button id="calc-toggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#f8f9fb;border:none;border-top:1px solid #ececec;cursor:pointer;text-align:left">
+        <span class="panel-title">🧮 Calculator</span>
+        <span id="calc-toggle-icon" style="font-size:11px;color:#bbb">▸ show</span>
+      </button>
+      <div id="calc-body" style="display:none;padding:12px 20px 16px">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button id="calc-clear" style="font-size:11px;color:#bbb;background:none;border:none;cursor:pointer;padding:0">Clear</button>
+        </div>
         <div id="calc-display">
           <div id="calc-expr"></div>
           <div id="calc-result">0</div>
@@ -629,6 +632,14 @@ let savedCrews = [];
     btn?.click();
   });
 })();
+
+document.getElementById('calc-toggle').addEventListener('click', () => {
+  const body = document.getElementById('calc-body');
+  const icon = document.getElementById('calc-toggle-icon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  icon.textContent   = open ? '▸ show' : '▾ hide';
+});
 
 // ─── DATA DEFINITIONS ────────────────────────────────────────────────────────
 
