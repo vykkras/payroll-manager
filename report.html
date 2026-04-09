@@ -864,16 +864,10 @@ function loadFile(file) {
 
       filterSubsector = ''; filterCrew = ''; filterDate = '';
 
-      // Populate filter dropdowns using project-specific column names
-      const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
-      const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+      // Date filter — primary, always from all rows
       const dateFilterCol = activeProject?.dateFilterCol;
-      populateSelect('f-subsector', [...new Set(allRows.map(r => String(r[subsectorCol]||'').trim()).filter(Boolean))].sort());
-      populateSelect('f-crew',      [...new Set(allRows.map(r => String(r[crewCol]||'').trim()).filter(Boolean))].sort());
-
-      // Date filter — only for projects with a dateFilterCol
       const showDate = !!dateFilterCol;
-      document.getElementById('f-date-divider').style.display   = showDate ? '' : 'none';
+      document.getElementById('f-date-divider').style.display    = showDate ? '' : 'none';
       document.getElementById('filter-label-date').style.display = showDate ? '' : 'none';
       document.getElementById('f-date').style.display            = showDate ? '' : 'none';
       if (showDate) {
@@ -881,7 +875,10 @@ function loadFile(file) {
         populateSelect('f-date', dates);
       }
 
-      // Update filter labels
+      // Subsector + crew dropdowns (cascade from date)
+      updateFilterDropdowns();
+
+      // Filter labels
       if (activeProject) {
         document.getElementById('filter-label-subsector').textContent = activeProject.filterLabels.subsector;
         document.getElementById('filter-label-crew').textContent      = activeProject.filterLabels.crew;
@@ -901,10 +898,36 @@ function loadFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
-function populateSelect(id, values) {
+function populateSelect(id, values, selected = '') {
   const sel = document.getElementById(id);
   sel.innerHTML = `<option value="">All (${values.length})</option>` +
-    values.map(v => `<option value="${v}">${v}</option>`).join('');
+    values.map(v => `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`).join('');
+}
+
+// Repopulate subsector + crew dropdowns based on current date (and subsector) filter.
+// Called on file load and whenever date or subsector changes.
+function updateFilterDropdowns() {
+  const dateFilterCol = activeProject?.dateFilterCol;
+  const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
+  const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+
+  // Pool for subsector = rows matching date only
+  const byDate = (filterDate && dateFilterCol)
+    ? allRows.filter(r => fmtDateVal(r[dateFilterCol]) === filterDate)
+    : allRows;
+
+  // Pool for crew = rows matching date + subsector
+  const byDateSub = filterSubsector
+    ? byDate.filter(r => String(r[subsectorCol]||'').trim() === filterSubsector)
+    : byDate;
+
+  populateSelect('f-subsector',
+    [...new Set(byDate.map(r => String(r[subsectorCol]||'').trim()).filter(Boolean))].sort(),
+    filterSubsector);
+
+  populateSelect('f-crew',
+    [...new Set(byDateSub.map(r => String(r[crewCol]||'').trim()).filter(Boolean))].sort(),
+    filterCrew);
 }
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
@@ -1158,14 +1181,20 @@ document.querySelectorAll('.pos-tab').forEach(btn =>
 
 // ─── FILTER EVENTS ────────────────────────────────────────────────────────────
 
+document.getElementById('f-date').addEventListener('change', e => {
+  filterDate = e.target.value;
+  filterSubsector = ''; filterCrew = ''; // reset downstream
+  updateFilterDropdowns();
+  renderAll();
+});
 document.getElementById('f-subsector').addEventListener('change', e => {
-  filterSubsector = e.target.value; renderAll();
+  filterSubsector = e.target.value;
+  filterCrew = ''; // reset downstream
+  updateFilterDropdowns();
+  renderAll();
 });
 document.getElementById('f-crew').addEventListener('change', e => {
   filterCrew = e.target.value; renderAll();
-});
-document.getElementById('f-date').addEventListener('change', e => {
-  filterDate = e.target.value; renderAll();
 });
 
 // ─── UPLOAD EVENTS ────────────────────────────────────────────────────────────
