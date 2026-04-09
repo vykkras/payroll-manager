@@ -344,10 +344,10 @@ tr.editing-row td { background:#f8f9ff; }
 
 <!-- ═══ FILTER BAR ═══ -->
 <div id="filter-bar">
-  <span class="filter-label">Subsector</span>
+  <span class="filter-label" id="filter-label-subsector">Subsector</span>
   <select class="filter-select" id="f-subsector"><option value="">All</option></select>
   <div class="filter-divider"></div>
-  <span class="filter-label">Crew</span>
+  <span class="filter-label" id="filter-label-crew">Crew</span>
   <select class="filter-select" id="f-crew"><option value="">All</option></select>
   <span id="record-count"></span>
 </div>
@@ -358,22 +358,22 @@ tr.editing-row td { background:#f8f9ff; }
   <!-- LEFT panel -->
   <div id="left-panel">
 
-    <!-- Mode selector (shown initially) -->
+    <!-- Project selector (shown initially) -->
     <div id="mode-selector">
-      <div class="panel-header"><span class="panel-title">How are you entering data?</span></div>
+      <div class="panel-header"><span class="panel-title">Select Project</span></div>
       <div id="mode-btns">
-        <button class="mode-btn" id="btn-mode-file">
-          <span class="mode-icon">📂</span>
-          <div><div class="mode-name">Upload Report File</div><div class="mode-desc">Excel / CSV from field data</div></div>
+        <button class="mode-btn" onclick="selectProject('selma')">
+          <span class="mode-icon">🏙️</span>
+          <div><div class="mode-name">Selma, Alabama</div><div class="mode-desc">Upload field report — Excel / CSV</div></div>
         </button>
-        <button class="mode-btn" id="btn-mode-manual">
-          <span class="mode-icon">✏️</span>
-          <div><div class="mode-name">Manual Entry</div><div class="mode-desc">Enter data column by column</div></div>
+        <button class="mode-btn" onclick="selectProject('georgia')">
+          <span class="mode-icon">🌲</span>
+          <div><div class="mode-name">Georgia Production</div><div class="mode-desc">Upload Georgia production sheet</div></div>
         </button>
       </div>
     </div>
 
-    <!-- File mode -->
+    <!-- File mode (summary — shown after file load) -->
     <div id="file-mode">
       <div class="panel-header">
         <span class="panel-title">Production Summary</span>
@@ -384,18 +384,6 @@ tr.editing-row td { background:#f8f9ff; }
           <thead><tr><th>Item</th><th>Unit</th><th class="r">Total</th></tr></thead>
           <tbody id="summary-tbody"></tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- Manual entry mode -->
-    <div id="manual-mode">
-      <div class="panel-header">
-        <span class="panel-title">Manual Entry</span>
-        <button class="btn-panel-action" id="btn-add-col">+ Column</button>
-      </div>
-      <div id="manual-grid-wrap"></div>
-      <div id="btn-add-row-wrap">
-        <button class="btn-panel-action" id="btn-add-row">+ Add Row</button>
       </div>
     </div>
 
@@ -658,124 +646,121 @@ const RATES = {
   riser:        { code: 'FPRS',          primero: 10,   segundo: 10,   tercero: null  },
 };
 
+// ─── GEORGIA DATA DEFINITIONS ────────────────────────────────────────────────
+const GEORGIA_ITEMS = [
+  { key: 'g_c6m',    label: 'C6M',             unit: 'ft',  csvCol: 'C6M',        divBy2: false },
+  { key: 'g_pm11',   label: 'PM11',            unit: 'ft',  csvCol: 'PM11',       divBy2: false },
+  { key: 'g_pfi3',   label: 'PFI-3 (PE13)',    unit: 'ea',  csvCol: 'PFI-3',      divBy2: false },
+  { key: 'g_pm2a',   label: 'PM2A',            unit: 'ft',  csvCol: 'PM2A',       divBy2: false },
+  { key: 'g_mrc',    label: 'Make Ready C',    unit: 'ea',  csvCol: 'MR-C',       divBy2: false },
+  { key: 'g_mrs',    label: 'Make Ready S',    unit: 'ea',                        divBy2: false },
+  { key: 'g_rcd',    label: 'RCD',             unit: 'ea',                        divBy2: false },
+  { key: 'g_pf33',   label: 'PF33 Anchor',     unit: 'ea',  csvCol: 'PF33 ANCHOR',divBy2: false },
+  { key: 'g_pf33a',  label: 'PF33 Aux',        unit: 'ea',  csvCol: 'PF33 AUX',   divBy2: false },
+  { key: 'g_f24',    label: 'Fibra 24',        unit: 'ft',  csvCol: 'FIBRA 24',   divBy2: false },
+  { key: 'g_f48',    label: 'Fibra 48',        unit: 'ft',  csvCol: 'FIBRA 48',   divBy2: false },
+  { key: 'g_f96',    label: 'Fibra 96',        unit: 'ft',  csvCol: 'FIBRA 96',   divBy2: false },
+  { key: 'g_f144',   label: 'Fibra 144',       unit: 'ft',  csvCol: 'FIBRA 144',  divBy2: false },
+  { key: 'g_f288',   label: 'Fibra 288',       unit: 'ft',  csvCol: 'FIBRA 288',  divBy2: false },
+  { key: 'g_mrde',   label: 'MR-DE',           unit: 'ea',                        divBy2: false },
+  { key: 'g_extra',  label: 'Emergency EACA',  unit: 'ea',  csvCol: 'EXTRA',      divBy2: false },
+  { key: 'g_bm80t',  label: 'Riser (BM80T)',   unit: 'ea',  csvCol: 'BM80T',      divBy2: false },
+  { key: 'g_pmsl',   label: 'PMSL',            unit: 'ea',  csvCol: 'PMSL',       divBy2: false },
+  { key: 'g_ovlsh',  label: 'Overlash',        unit: 'ft',  csvCol: 'OVERLASH',   divBy2: false },
+];
+
+const GEORGIA_RATES = {
+  g_c6m:   { code: 'C6M',            primero: 0.13, segundo: 0.13, tercero: null  },
+  g_pm11:  { code: 'PM11',           primero: 1.01, segundo: 1.01, tercero: null  },
+  g_pfi3:  { code: 'PE13',           primero: 2.07, segundo: 2.07, tercero: null  },
+  g_pm2a:  { code: 'PM2A',           primero: 1.35, segundo: 1.35, tercero: null  },
+  g_mrc:   { code: 'MRC',            primero: 25,   segundo: 25,   tercero: null  },
+  g_mrs:   { code: 'MRS',            primero: 25,   segundo: 25,   tercero: null  },
+  g_rcd:   { code: 'RCD',            primero: 9,    segundo: 9,    tercero: null  },
+  g_pf33:  { code: 'PF33',           primero: 40,   segundo: 40,   tercero: null  },
+  g_pf33a: { code: 'PF33AUX',        primero: 1.68, segundo: 1.68, tercero: null  },
+  g_f24:   { code: 'CO24',           primero: 0.13, segundo: 0.13, tercero: null  },
+  g_f48:   { code: 'CO48',           primero: 0.13, segundo: 0.13, tercero: null  },
+  g_f96:   { code: 'CO96',           primero: 0.13, segundo: 0.13, tercero: null  },
+  g_f144:  { code: 'CO144',          primero: 0.13, segundo: 0.13, tercero: null  },
+  g_f288:  { code: 'CO288',          primero: 0.13, segundo: 0.13, tercero: null  },
+  g_mrde:  { code: 'MR-DE',          primero: 25,   segundo: 25,   tercero: null  },
+  g_extra: { code: 'EACA',           primero: 40,   segundo: 40,   tercero: null  },
+  g_bm80t: { code: 'RISER',          primero: 1.35, segundo: 1.35, tercero: null  },
+  g_pmsl:  { code: 'PMSL',           primero: 10,   segundo: 10,   tercero: null  },
+  g_ovlsh: { code: 'OVERLASH',       primero: 0.10, segundo: 0.10, tercero: null  },
+};
+
+// ─── PROJECT CONFIGS ─────────────────────────────────────────────────────────
+const PROJECTS = {
+  selma: {
+    name:         'Selma, Alabama',
+    items:        ITEMS,
+    rates:        RATES,
+    filterLabels: { subsector: 'Subsector', crew: 'Crew' },
+    filterCols:   { subsector: 'subsector', crew: 'last editing user' },
+    rowFilter:    r => r['taskId'] || r['taskType'],
+    sheetName:    null,
+    dateCol:      'completed date',
+    addressCol:   'street address',
+    crewDataCol:  'last editing user',
+  },
+  georgia: {
+    name:         'Georgia Production',
+    items:        GEORGIA_ITEMS,
+    rates:        GEORGIA_RATES,
+    filterLabels: { subsector: 'Feeder', crew: 'Names' },
+    filterCols:   { subsector: 'FEEDER', crew: 'NOMBRES' },
+    rowFilter:    r => r['INVOICED'] === true || String(r['INVOICED']).toUpperCase() === 'TRUE',
+    sheetName:    'GEORGIA PRODUCCIÓN',
+    dateCol:      'FECHA DE CIERRE DE SEMANA',
+    addressCol:   'MAPS',
+    crewDataCol:  'NOMBRES',
+  },
+};
+
 // ─── ACTIVE ITEMS (mutable rate card) ────────────────────────────────────────
-// Merged flat structure: { key, label, unit, code, primero, segundo, tercero, divBy2, csvCol?, taskType? }
-let activeItems = ITEMS.map(item => ({
-  ...item,
-  code:    RATES[item.key].code,
-  primero: RATES[item.key].primero,
-  segundo: RATES[item.key].segundo,
-  tercero: RATES[item.key].tercero,
-}));
+// Initialized by initProject(); defaults to Selma on page load
+let activeItems = [];
 
 function uidItem() { return 'i_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-
 let allRows = [], headers = [];
 let filterSubsector = '', filterCrew = '';
 let currentPos = 'primero';
 let payQtys = {};
 let crewNames = { primero: '', segundo: '', tercero: '' };
+let editingRowKey = null;
+let activeProject = null;
 
-// ─── EDITOR MODE ─────────────────────────────────────────────────────────────
-let editorMode = null; // 'file' | 'manual'
-let manualCols = [{ id: 'c_map', name: 'Map', unit: '' }];
-let manualRows = [];
-let editingRowKey = null; // key of row currently being edited in payroll table
+// ─── PROJECT SELECTOR ────────────────────────────────────────────────────────
+function initProject(id) {
+  activeProject = PROJECTS[id];
+  activeItems = activeProject.items.map(item => ({
+    ...item,
+    code:    activeProject.rates[item.key].code,
+    primero: activeProject.rates[item.key].primero,
+    segundo: activeProject.rates[item.key].segundo,
+    tercero: activeProject.rates[item.key].tercero,
+  }));
+  payQtys = {};
+}
 
-function uidCol() { return 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
-
-function setEditorMode(mode) {
-  editorMode = mode;
+function selectProject(id) {
+  initProject(id);
   document.getElementById('mode-selector').style.display  = 'none';
-  document.getElementById('file-mode').classList.toggle('on',   mode === 'file');
-  document.getElementById('manual-mode').classList.toggle('on', mode === 'manual');
+  document.getElementById('file-mode').classList.add('on');
   document.getElementById('calc-wrap').style.display = '';
-  if (mode === 'file') {
-    document.getElementById('upload-overlay').style.display = '';
-  } else {
-    renderManualGrid();
-  }
+  document.getElementById('upload-overlay').style.display = '';
+  document.getElementById('filter-label-subsector').textContent = activeProject.filterLabels.subsector;
+  document.getElementById('filter-label-crew').textContent = activeProject.filterLabels.crew;
+  renderPayment();
 }
-
-document.getElementById('btn-mode-file').addEventListener('click',   () => setEditorMode('file'));
-document.getElementById('btn-mode-manual').addEventListener('click', () => setEditorMode('manual'));
-
-// ─── MANUAL GRID ─────────────────────────────────────────────────────────────
-function escG(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function addManualCol() {
-  const name = prompt('Column name:');
-  if (!name) return;
-  const unit = prompt('Unit (ft, ea, hrs…) — leave blank if none:') || '';
-  manualCols.push({ id: uidCol(), name: name.trim(), unit: unit.trim() });
-  if (!manualRows.length) addManualRow();
-  else renderManualGrid();
-}
-
-function addManualRow() {
-  manualRows.push({ id: uidCol(), cells: {} });
-  renderManualGrid();
-}
-
-function deleteManualRow(id) {
-  manualRows = manualRows.filter(r => r.id !== id);
-  renderManualGrid();
-}
-
-function deleteManualCol(id) {
-  if (manualCols.length <= 1) return;
-  manualCols = manualCols.filter(c => c.id !== id);
-  renderManualGrid();
-}
-
-function updateManualCell(rowId, colId, value) {
-  const row = manualRows.find(r => r.id === rowId);
-  if (row) row.cells[colId] = value;
-  // Refresh just the totals row
-  const tfoot = document.querySelector('.manual-table tfoot');
-  if (tfoot) tfoot.innerHTML = manualTotalsRow();
-}
-
-function manualTotalsRow() {
-  return '<tr class="manual-totals">' +
-    manualCols.map((c, i) => {
-      if (i === 0) return '<td><strong>Total</strong></td>';
-      const sum = manualRows.reduce((s, r) => s + (parseFloat(r.cells[c.id]) || 0), 0);
-      return `<td>${sum ? sum.toLocaleString() + (c.unit ? ' ' + c.unit : '') : '—'}</td>`;
-    }).join('') + '<td></td></tr>';
-}
-
-function renderManualGrid() {
-  const wrap = document.getElementById('manual-grid-wrap');
-  if (!manualRows.length) {
-    wrap.innerHTML = `<div style="text-align:center;padding:32px 20px;color:#ccc;font-size:13px">Click <strong>+ Add Row</strong> to start entering data</div>`;
-    return;
-  }
-  wrap.innerHTML = `<table class="manual-table">
-    <thead><tr>
-      ${manualCols.map(c => `<th>
-        <div class="mcol-head">
-          <span>${escG(c.name)}${c.unit ? ' <em>'+escG(c.unit)+'</em>' : ''}</span>
-          ${c.id !== 'c_map' ? `<button class="mcol-del" onclick="deleteManualCol('${c.id}')">✕</button>` : ''}
-        </div></th>`).join('')}
-      <th></th>
-    </tr></thead>
-    <tbody>${manualRows.map(r => `<tr>
-      ${manualCols.map(c => `<td><input class="mcell"
-        value="${escG(r.cells[c.id]||'')}" placeholder="${c.id==='c_map'?'ref':'0'}"
-        onchange="updateManualCell('${r.id}','${c.id}',this.value)"></td>`).join('')}
-      <td><button class="mrow-del" onclick="deleteManualRow('${r.id}')">✕</button></td>
-    </tr>`).join('')}</tbody>
-    <tfoot>${manualTotalsRow()}</tfoot>
-  </table>`;
-}
-
-document.getElementById('btn-add-col').addEventListener('click', addManualCol);
-document.getElementById('btn-add-row').addEventListener('click', addManualRow);
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
+
+function escG(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function parseNum(v) {
   if (v === null || v === undefined || v === '') return 0;
@@ -803,9 +788,11 @@ function parseDate(v) { const m = String(v||'').match(/(\d{4}-\d{2}-\d{2})/); re
 // ─── COMPUTED QUANTITIES ──────────────────────────────────────────────────────
 
 function getFilteredRows() {
+  const subsectorCol = activeProject?.filterCols?.subsector || 'subsector';
+  const crewCol      = activeProject?.filterCols?.crew      || 'last editing user';
   return allRows.filter(r => {
-    if (filterSubsector && String(r['subsector']||'').trim() !== filterSubsector) return false;
-    if (filterCrew      && String(r['last editing user']||'').trim() !== filterCrew)    return false;
+    if (filterSubsector && String(r[subsectorCol]||'').trim() !== filterSubsector) return false;
+    if (filterCrew      && String(r[crewCol]||'').trim()      !== filterCrew)      return false;
     return true;
   });
 }
@@ -825,20 +812,33 @@ function loadFile(file) {
   reader.onload = e => {
     try {
       const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
+      // Use project-specific sheet name if available, otherwise first sheet
+      const sheetName = (activeProject?.sheetName && wb.Sheets[activeProject.sheetName])
+        ? activeProject.sheetName
+        : wb.SheetNames[0];
+      const ws  = wb.Sheets[sheetName];
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
       if (raw.length < 2) { alert('File appears empty.'); return; }
 
       headers = raw[0].map(h => String(h).trim());
+      const rowFilter = activeProject?.rowFilter || (r => r['taskId'] || r['taskType']);
       allRows = raw.slice(1)
         .map(row => { const o = {}; headers.forEach((h,i) => { o[h]=row[i]??''; }); return o; })
-        .filter(r => r['taskId'] || r['taskType']);
+        .filter(rowFilter);
 
       filterSubsector = ''; filterCrew = '';
 
-      // Populate filter dropdowns
-      populateSelect('f-subsector', [...new Set(allRows.map(r => String(r['subsector']||'').trim()).filter(Boolean))].sort());
-      populateSelect('f-crew',      [...new Set(allRows.map(r => String(r['last editing user']||'').trim()).filter(Boolean))].sort());
+      // Populate filter dropdowns using project-specific column names
+      const subsectorCol = activeProject?.filterCols?.subsector || 'subsector';
+      const crewCol      = activeProject?.filterCols?.crew      || 'last editing user';
+      populateSelect('f-subsector', [...new Set(allRows.map(r => String(r[subsectorCol]||'').trim()).filter(Boolean))].sort());
+      populateSelect('f-crew',      [...new Set(allRows.map(r => String(r[crewCol]||'').trim()).filter(Boolean))].sort());
+
+      // Update filter labels
+      if (activeProject) {
+        document.getElementById('filter-label-subsector').textContent = activeProject.filterLabels.subsector;
+        document.getElementById('filter-label-crew').textContent      = activeProject.filterLabels.crew;
+      }
 
       document.getElementById('header-file').textContent = file.name;
       document.getElementById('change-file-btn').style.display = '';
@@ -1022,23 +1022,27 @@ function openBreakdown(key, rows) {
   if (!item) return;
 
   let detailRows;
+  const dateCol    = activeProject?.dateCol    || 'completed date';
+  const addressCol = activeProject?.addressCol || 'street address';
+  const crewDataCol = activeProject?.crewDataCol || 'last editing user';
+
   if (item.taskType) {
     detailRows = rows
       .filter(r => String(r['taskType']||'').trim() === item.taskType)
       .map(r => ({
-        date: parseDate(r['completed date']),
-        address: String(r['street address']||r['assetID']||'').trim(),
-        crew: String(r['last editing user']||'').trim(),
-        qty: 1,
+        date:    parseDate(r[dateCol]),
+        address: String(r[addressCol]||r['assetID']||'').trim(),
+        crew:    String(r[crewDataCol]||'').trim(),
+        qty:     1,
       }));
   } else {
     detailRows = rows
       .filter(r => parseNum(r[item.csvCol]) > 0)
       .map(r => ({
-        date: parseDate(r['completed date']),
-        address: String(r['street address']||r['assetID']||'').trim(),
-        crew: String(r['last editing user']||'').trim(),
-        qty: parseNum(r[item.csvCol]),
+        date:    parseDate(r[dateCol]),
+        address: String(r[addressCol]||r['assetID']||'').trim(),
+        crew:    String(r[crewDataCol]||'').trim(),
+        qty:     parseNum(r[item.csvCol]),
       }))
       .sort((a, b) => b.qty - a.qty);
   }
@@ -1115,9 +1119,9 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.ta
 document.getElementById('change-file-btn').addEventListener('click', () => {
   allRows = []; headers = []; fileInput.value = '';
   filterSubsector = ''; filterCrew = '';
+  // Show upload overlay (project already selected — just re-pick a file)
   document.getElementById('upload-overlay').style.display = '';
   document.getElementById('filter-bar').classList.remove('visible');
-  document.getElementById('app').classList.remove('visible');
   document.getElementById('change-file-btn').style.display = 'none';
   document.getElementById('header-file').textContent = '';
   document.getElementById('breakdown').classList.remove('open');
@@ -1272,6 +1276,7 @@ document.getElementById('btn-download').addEventListener('click', () => {
 
   // ── If editing an existing payroll, pre-load its data ──
   if (prid) {
+    initProject('selma'); // default project for existing payrolls
     const appData = await getAppData();
     if (appData) {
       const pr = appData.find(x => x.id === pid)
