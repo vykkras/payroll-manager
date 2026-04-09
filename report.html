@@ -354,6 +354,9 @@ tr.editing-row td { background:#f8f9ff; }
   <div class="filter-divider"></div>
   <span class="filter-label" id="filter-label-crew">Crew</span>
   <select class="filter-select" id="f-crew"><option value="">All</option></select>
+  <div class="filter-divider" id="f-date-divider" style="display:none"></div>
+  <span class="filter-label" id="filter-label-date" style="display:none">Date</span>
+  <select class="filter-select" id="f-date" style="display:none"><option value="">All</option></select>
   <span id="record-count"></span>
 </div>
 
@@ -706,28 +709,30 @@ const GEORGIA_RATES = {
 // ─── PROJECT CONFIGS ─────────────────────────────────────────────────────────
 const PROJECTS = {
   selma: {
-    name:         'Selma, Alabama',
-    items:        ITEMS,
-    rates:        RATES,
-    filterLabels: { subsector: 'Subsector', crew: 'Crew' },
-    filterCols:   { subsector: 'subsector', crew: 'last editing user' },
-    rowFilter:    r => r['taskId'] || r['taskType'],
-    sheetName:    null,
-    dateCol:      'completed date',
-    addressCol:   'street address',
-    crewDataCol:  'last editing user',
+    name:          'Selma, Alabama',
+    items:         ITEMS,
+    rates:         RATES,
+    filterLabels:  { subsector: 'Subsector', crew: 'Crew' },
+    filterCols:    { subsector: 'subsector', crew: 'last editing user' },
+    rowFilter:     r => r['taskId'] || r['taskType'],
+    sheetName:     null,
+    dateCol:       'completed date',
+    addressCol:    'street address',
+    crewDataCol:   'last editing user',
+    dateFilterCol: null,
   },
   georgia: {
-    name:         'Georgia Production',
-    items:        GEORGIA_ITEMS,
-    rates:        GEORGIA_RATES,
-    filterLabels: { subsector: 'Feeder', crew: 'Names' },
-    filterCols:   { subsector: 'FEEDER', crew: 'NOMBRES' },
-    rowFilter:    r => r['INVOICED'] === true || String(r['INVOICED']).toUpperCase() === 'TRUE',
-    sheetName:    'GEORGIA PRODUCCIÓN',
-    dateCol:      'FECHA DE CIERRE DE SEMANA',
-    addressCol:   'MAPS',
-    crewDataCol:  'NOMBRES',
+    name:          'Georgia Production',
+    items:         GEORGIA_ITEMS,
+    rates:         GEORGIA_RATES,
+    filterLabels:  { subsector: 'Feeder', crew: 'Names' },
+    filterCols:    { subsector: 'FEEDER', crew: 'NOMBRES' },
+    rowFilter:     r => r['INVOICED'] === true || String(r['INVOICED']).toUpperCase() === 'TRUE',
+    sheetName:     'GEORGIA PRODUCCIÓN',
+    dateCol:       'FECHA DE CIERRE DE SEMANA',
+    addressCol:    'MAPS',
+    crewDataCol:   'NOMBRES',
+    dateFilterCol: 'FECHA DE CIERRE DE SEMANA',
   },
 };
 
@@ -739,7 +744,7 @@ function uidItem() { return 'i_' + Date.now().toString(36) + Math.random().toStr
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let allRows = [], headers = [];
-let filterSubsector = '', filterCrew = '';
+let filterSubsector = '', filterCrew = '', filterDate = '';
 let currentPos = 'primero';
 let payQtys = {};
 let crewNames = { primero: '', segundo: '', tercero: '' };
@@ -798,14 +803,32 @@ function fmtRate(r) {
 function taskLabel(s) { return s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : s; }
 function parseDate(v) { const m = String(v||'').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; }
 
+// Converts Excel serial numbers or date strings to a consistent display string for the date filter
+function fmtDateVal(v) {
+  if (v === null || v === undefined || v === '') return '';
+  // Excel serial date number
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const s = String(v).trim();
+  if (!s) return '';
+  // Try parsing as a date string
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return s; // fallback: use as-is
+}
+
 // ─── COMPUTED QUANTITIES ──────────────────────────────────────────────────────
 
 function getFilteredRows() {
-  const subsectorCol = activeProject?.filterCols?.subsector || 'subsector';
-  const crewCol      = activeProject?.filterCols?.crew      || 'last editing user';
+  const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
+  const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+  const dateFilterCol = activeProject?.dateFilterCol;
   return allRows.filter(r => {
     if (filterSubsector && String(r[subsectorCol]||'').trim() !== filterSubsector) return false;
     if (filterCrew      && String(r[crewCol]||'').trim()      !== filterCrew)      return false;
+    if (filterDate && dateFilterCol && fmtDateVal(r[dateFilterCol]) !== filterDate) return false;
     return true;
   });
 }
@@ -839,13 +862,24 @@ function loadFile(file) {
         .map(row => { const o = {}; headers.forEach((h,i) => { o[h]=row[i]??''; }); return o; })
         .filter(rowFilter);
 
-      filterSubsector = ''; filterCrew = '';
+      filterSubsector = ''; filterCrew = ''; filterDate = '';
 
       // Populate filter dropdowns using project-specific column names
-      const subsectorCol = activeProject?.filterCols?.subsector || 'subsector';
-      const crewCol      = activeProject?.filterCols?.crew      || 'last editing user';
+      const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
+      const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+      const dateFilterCol = activeProject?.dateFilterCol;
       populateSelect('f-subsector', [...new Set(allRows.map(r => String(r[subsectorCol]||'').trim()).filter(Boolean))].sort());
       populateSelect('f-crew',      [...new Set(allRows.map(r => String(r[crewCol]||'').trim()).filter(Boolean))].sort());
+
+      // Date filter — only for projects with a dateFilterCol
+      const showDate = !!dateFilterCol;
+      document.getElementById('f-date-divider').style.display   = showDate ? '' : 'none';
+      document.getElementById('filter-label-date').style.display = showDate ? '' : 'none';
+      document.getElementById('f-date').style.display            = showDate ? '' : 'none';
+      if (showDate) {
+        const dates = [...new Set(allRows.map(r => fmtDateVal(r[dateFilterCol])).filter(Boolean))].sort();
+        populateSelect('f-date', dates);
+      }
 
       // Update filter labels
       if (activeProject) {
@@ -1129,6 +1163,9 @@ document.getElementById('f-subsector').addEventListener('change', e => {
 });
 document.getElementById('f-crew').addEventListener('change', e => {
   filterCrew = e.target.value; renderAll();
+});
+document.getElementById('f-date').addEventListener('change', e => {
+  filterDate = e.target.value; renderAll();
 });
 
 // ─── UPLOAD EVENTS ────────────────────────────────────────────────────────────
