@@ -258,6 +258,55 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 .ck.acc:hover { background: #2c2c4a; }
 .ck.wide   { grid-column: span 2; }
 
+/* ── Mode selector ── */
+#mode-selector { display:flex; flex-direction:column; flex:1; }
+#mode-btns { display:flex; flex-direction:column; gap:12px; padding:24px 20px; flex:1; justify-content:center; }
+.mode-btn {
+  display:flex; align-items:center; gap:14px; padding:18px 20px;
+  background:#fff; border:1.5px solid #e0e0e0; border-radius:12px;
+  cursor:pointer; text-align:left; transition:all 0.15s;
+}
+.mode-btn:hover { border-color:#3949ab; box-shadow:0 2px 12px rgba(57,73,171,0.1); }
+.mode-icon { font-size:28px; flex-shrink:0; }
+.mode-name { font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:3px; }
+.mode-desc { font-size:12px; color:#aaa; }
+
+/* ── Manual grid ── */
+#manual-mode { display:none; flex-direction:column; flex:1; overflow:hidden; }
+#manual-mode.on { display:flex; }
+#file-mode { display:none; flex-direction:column; flex:1; overflow:hidden; }
+#file-mode.on { display:flex; }
+#manual-grid-wrap { flex:1; overflow:auto; padding:12px 20px; }
+.manual-table { width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap; }
+.manual-table th { background:#1a1a2e; color:rgba(255,255,255,0.7); padding:7px 10px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; position:sticky; top:0; }
+.manual-table td { padding:4px 6px; border-bottom:1px solid #f5f5f5; }
+.manual-table tfoot td { font-weight:700; color:#1a1a2e; border-top:2px solid #1a1a2e; padding:6px 10px; font-size:11px; }
+.mcell { width:100%; min-width:70px; border:1px solid transparent; border-radius:4px; padding:4px 6px; font-size:12px; color:#333; background:transparent; }
+.mcell:focus { outline:none; border-color:#3949ab; background:#fff; }
+.mcol-head { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:70px; }
+.mcol-head em { font-style:normal; opacity:0.5; font-size:9px; }
+.mcol-del,.mrow-del { background:none; border:none; color:#ccc; cursor:pointer; font-size:11px; padding:0 2px; flex-shrink:0; }
+.mcol-del:hover,.mrow-del:hover { color:#c0392b; }
+.btn-panel-action { background:none; border:1px solid #e0e0e0; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600; color:#666; cursor:pointer; }
+.btn-panel-action:hover { border-color:#3949ab; color:#3949ab; }
+#btn-add-row-wrap { padding:8px 20px; border-top:1px solid #f0f0f0; flex-shrink:0; }
+#btn-add-row { width:100%; }
+
+/* ── Editable payroll rows ── */
+.pay-edit-btn { background:none; border:none; color:#ddd; cursor:pointer; font-size:13px; padding:0 4px; }
+.pay-edit-btn:hover { color:#3949ab; }
+.pay-del-btn  { background:none; border:none; color:#ddd; cursor:pointer; font-size:13px; padding:0 4px; }
+.pay-del-btn:hover  { color:#c0392b; }
+tr.editing-row td { background:#f8f9ff; }
+.pay-inline-input { border:1px solid #c5cae9; border-radius:4px; padding:3px 6px; font-size:12px; width:100%; min-width:40px; }
+.pay-inline-input:focus { outline:none; border-color:#3949ab; }
+.pay-save-btn   { background:#3949ab; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; }
+.pay-cancel-btn { background:none; border:1px solid #e0e0e0; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; color:#888; margin-left:4px; }
+#pay-table thead th:first-child { width:28px; }
+#add-item-row td { padding:6px 10px; }
+.btn-add-item { background:none; border:1px dashed #ccc; border-radius:6px; padding:4px 12px; font-size:11px; color:#aaa; cursor:pointer; }
+.btn-add-item:hover { border-color:#3949ab; color:#3949ab; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -279,7 +328,7 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 </header>
 
 <!-- ═══ UPLOAD ═══ -->
-<div id="upload-overlay">
+<div id="upload-overlay" style="display:none">
   <div id="upload-zone">
     <span class="icon">📂</span>
     <h2>Drop your production report</h2>
@@ -304,25 +353,50 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
 </div>
 
 <!-- ═══ MAIN SPLIT ═══ -->
-<div id="app">
+<div id="app" class="visible">
 
-  <!-- LEFT: Summary -->
+  <!-- LEFT panel -->
   <div id="left-panel">
-    <div class="panel-header">
-      <span class="panel-title">Production Summary</span>
-      <span class="panel-hint">Click a total to see breakdown</span>
+
+    <!-- Mode selector (shown initially) -->
+    <div id="mode-selector">
+      <div class="panel-header"><span class="panel-title">How are you entering data?</span></div>
+      <div id="mode-btns">
+        <button class="mode-btn" id="btn-mode-file">
+          <span class="mode-icon">📂</span>
+          <div><div class="mode-name">Upload Report File</div><div class="mode-desc">Excel / CSV from field data</div></div>
+        </button>
+        <button class="mode-btn" id="btn-mode-manual">
+          <span class="mode-icon">✏️</span>
+          <div><div class="mode-name">Manual Entry</div><div class="mode-desc">Enter data column by column</div></div>
+        </button>
+      </div>
     </div>
-    <div id="summary-wrap">
-      <table id="summary-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Unit</th>
-            <th class="r">Total</th>
-          </tr>
-        </thead>
-        <tbody id="summary-tbody"></tbody>
-      </table>
+
+    <!-- File mode -->
+    <div id="file-mode">
+      <div class="panel-header">
+        <span class="panel-title">Production Summary</span>
+        <span class="panel-hint">Click a total to see breakdown</span>
+      </div>
+      <div id="summary-wrap">
+        <table id="summary-table">
+          <thead><tr><th>Item</th><th>Unit</th><th class="r">Total</th></tr></thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Manual entry mode -->
+    <div id="manual-mode">
+      <div class="panel-header">
+        <span class="panel-title">Manual Entry</span>
+        <button class="btn-panel-action" id="btn-add-col">+ Column</button>
+      </div>
+      <div id="manual-grid-wrap"></div>
+      <div id="btn-add-row-wrap">
+        <button class="btn-panel-action" id="btn-add-row">+ Add Row</button>
+      </div>
     </div>
 
     <!-- Calculator -->
@@ -395,14 +469,17 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
       <table id="pay-table">
         <thead>
           <tr>
+            <th style="width:28px"></th>
             <th style="width:90px">Code</th>
             <th>Description</th>
             <th class="r" style="width:90px">Qty</th>
             <th class="r" style="width:70px">Rate</th>
             <th class="r" style="width:90px">Amount</th>
+            <th style="width:24px"></th>
           </tr>
         </thead>
         <tbody id="pay-tbody"></tbody>
+        <tfoot><tr id="add-item-row"><td colspan="7"><button class="btn-add-item" onclick="addPayrollItem()">+ Add Item</button></td></tr></tfoot>
       </table>
     </div>
 
@@ -581,13 +658,122 @@ const RATES = {
   riser:        { code: 'FPRS',          primero: 10,   segundo: 10,   tercero: null  },
 };
 
+// ─── ACTIVE ITEMS (mutable rate card) ────────────────────────────────────────
+// Merged flat structure: { key, label, unit, code, primero, segundo, tercero, divBy2, csvCol?, taskType? }
+let activeItems = ITEMS.map(item => ({
+  ...item,
+  code:    RATES[item.key].code,
+  primero: RATES[item.key].primero,
+  segundo: RATES[item.key].segundo,
+  tercero: RATES[item.key].tercero,
+}));
+
+function uidItem() { return 'i_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
 // ─── STATE ───────────────────────────────────────────────────────────────────
 
 let allRows = [], headers = [];
 let filterSubsector = '', filterCrew = '';
 let currentPos = 'primero';
-let payQtys = {};   // { key: raw qty } — editable, auto-filled on filter change
+let payQtys = {};
 let crewNames = { primero: '', segundo: '', tercero: '' };
+
+// ─── EDITOR MODE ─────────────────────────────────────────────────────────────
+let editorMode = null; // 'file' | 'manual'
+let manualCols = [{ id: 'c_map', name: 'Map', unit: '' }];
+let manualRows = [];
+let editingRowKey = null; // key of row currently being edited in payroll table
+
+function uidCol() { return 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+function setEditorMode(mode) {
+  editorMode = mode;
+  document.getElementById('mode-selector').style.display  = 'none';
+  document.getElementById('file-mode').classList.toggle('on',   mode === 'file');
+  document.getElementById('manual-mode').classList.toggle('on', mode === 'manual');
+  document.getElementById('calc-wrap').style.display = '';
+  if (mode === 'file') {
+    document.getElementById('upload-overlay').style.display = '';
+  } else {
+    renderManualGrid();
+  }
+}
+
+document.getElementById('btn-mode-file').addEventListener('click',   () => setEditorMode('file'));
+document.getElementById('btn-mode-manual').addEventListener('click', () => setEditorMode('manual'));
+
+// ─── MANUAL GRID ─────────────────────────────────────────────────────────────
+function escG(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addManualCol() {
+  const name = prompt('Column name:');
+  if (!name) return;
+  const unit = prompt('Unit (ft, ea, hrs…) — leave blank if none:') || '';
+  manualCols.push({ id: uidCol(), name: name.trim(), unit: unit.trim() });
+  if (!manualRows.length) addManualRow();
+  else renderManualGrid();
+}
+
+function addManualRow() {
+  manualRows.push({ id: uidCol(), cells: {} });
+  renderManualGrid();
+}
+
+function deleteManualRow(id) {
+  manualRows = manualRows.filter(r => r.id !== id);
+  renderManualGrid();
+}
+
+function deleteManualCol(id) {
+  if (manualCols.length <= 1) return;
+  manualCols = manualCols.filter(c => c.id !== id);
+  renderManualGrid();
+}
+
+function updateManualCell(rowId, colId, value) {
+  const row = manualRows.find(r => r.id === rowId);
+  if (row) row.cells[colId] = value;
+  // Refresh just the totals row
+  const tfoot = document.querySelector('.manual-table tfoot');
+  if (tfoot) tfoot.innerHTML = manualTotalsRow();
+}
+
+function manualTotalsRow() {
+  return '<tr class="manual-totals">' +
+    manualCols.map((c, i) => {
+      if (i === 0) return '<td><strong>Total</strong></td>';
+      const sum = manualRows.reduce((s, r) => s + (parseFloat(r.cells[c.id]) || 0), 0);
+      return `<td>${sum ? sum.toLocaleString() + (c.unit ? ' ' + c.unit : '') : '—'}</td>`;
+    }).join('') + '<td></td></tr>';
+}
+
+function renderManualGrid() {
+  const wrap = document.getElementById('manual-grid-wrap');
+  if (!manualRows.length) {
+    wrap.innerHTML = `<div style="text-align:center;padding:32px 20px;color:#ccc;font-size:13px">Click <strong>+ Add Row</strong> to start entering data</div>`;
+    return;
+  }
+  wrap.innerHTML = `<table class="manual-table">
+    <thead><tr>
+      ${manualCols.map(c => `<th>
+        <div class="mcol-head">
+          <span>${escG(c.name)}${c.unit ? ' <em>'+escG(c.unit)+'</em>' : ''}</span>
+          ${c.id !== 'c_map' ? `<button class="mcol-del" onclick="deleteManualCol('${c.id}')">✕</button>` : ''}
+        </div></th>`).join('')}
+      <th></th>
+    </tr></thead>
+    <tbody>${manualRows.map(r => `<tr>
+      ${manualCols.map(c => `<td><input class="mcell"
+        value="${escG(r.cells[c.id]||'')}" placeholder="${c.id==='c_map'?'ref':'0'}"
+        onchange="updateManualCell('${r.id}','${c.id}',this.value)"></td>`).join('')}
+      <td><button class="mrow-del" onclick="deleteManualRow('${r.id}')">✕</button></td>
+    </tr>`).join('')}</tbody>
+    <tfoot>${manualTotalsRow()}</tfoot>
+  </table>`;
+}
+
+document.getElementById('btn-add-col').addEventListener('click', addManualCol);
+document.getElementById('btn-add-row').addEventListener('click', addManualRow);
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 
@@ -659,6 +845,8 @@ function loadFile(file) {
       document.getElementById('upload-overlay').style.display = 'none';
       document.getElementById('filter-bar').classList.add('visible');
       document.getElementById('app').classList.add('visible');
+      document.getElementById('file-mode').classList.add('on');
+      document.getElementById('calc-wrap').style.display = '';
 
       renderAll();
     } catch(err) { alert('Could not read file.\n' + err.message); }
@@ -678,7 +866,7 @@ function renderAll() {
   const rows = getFilteredRows();
   document.getElementById('record-count').textContent = `${rows.length.toLocaleString()} records`;
   // Auto-fill quantities from filtered data
-  ITEMS.forEach(item => { payQtys[item.key] = calcQty(item, rows); });
+  activeItems.forEach(item => { if (item.csvCol || item.taskType) payQtys[item.key] = calcQty(item, rows); });
   renderSummary(rows);
   renderPayment();
 }
@@ -688,7 +876,7 @@ function renderAll() {
 function renderSummary(rows) {
   const tbody = document.getElementById('summary-tbody');
 
-  const rowsHtml = ITEMS.map(item => {
+  const rowsHtml = activeItems.filter(i => i.csvCol || i.taskType).map(item => {
     const qty = calcQty(item, rows);
     const isZero = qty === 0;
     return `<tr>
@@ -715,16 +903,17 @@ function renderSummary(rows) {
 function renderPayment() {
   const tbody = document.getElementById('pay-tbody');
 
-  tbody.innerHTML = ITEMS.map(item => {
-    const rate  = RATES[item.key][currentPos];
-    const isNA  = rate === null;
+  tbody.innerHTML = activeItems.map(item => {
+    if (item.key === editingRowKey) return renderEditRow(item);
+    const rate   = item[currentPos];
+    const isNA   = rate === null || rate === undefined;
     const rawQty = payQtys[item.key] || 0;
     const payQty = item.divBy2 ? rawQty / 2 : rawQty;
     const amt    = isNA ? 0 : payQty * rate;
-
     return `<tr>
-      <td class="code">${RATES[item.key].code}</td>
-      <td class="name">${item.label}</td>
+      <td><button class="pay-edit-btn" onclick="startEditRow('${item.key}')">✎</button></td>
+      <td class="code">${escG(item.code)}</td>
+      <td class="name">${escG(item.label)}</td>
       <td style="padding:6px 10px">
         <input class="qty-input" type="number" min="0" step="1"
           data-key="${item.key}" value="${rawQty > 0 ? Math.round(rawQty) : ''}" placeholder="0"
@@ -733,18 +922,19 @@ function renderPayment() {
       </td>
       <td class="r rate">${fmtRate(rate)}</td>
       <td class="r amount" data-amt="${item.key}" style="${isNA ? 'color:#ccc' : amt===0 ? 'color:#ddd' : ''}">${isNA ? 'N/A' : fmtMoney(amt)}</td>
+      <td><button class="pay-del-btn" onclick="deletePayrollItem('${item.key}')">✕</button></td>
     </tr>`;
   }).join('') + `
     <tr>
+      <td></td>
       <td class="code">—</td>
       <td class="name" style="color:#c0392b">Discount (Hotel)</td>
       <td colspan="2" style="color:#aaa;padding:10px;font-size:12px">fixed</td>
       <td class="r amount" style="color:#c0392b">-$137.00</td>
+      <td></td>
     </tr>`;
 
   updatePaymentTotals();
-
-  // Bind qty inputs — update live without re-rendering
   tbody.querySelectorAll('.qty-input').forEach(input => {
     input.addEventListener('input', e => {
       payQtys[e.target.dataset.key] = parseFloat(e.target.value) || 0;
@@ -753,11 +943,65 @@ function renderPayment() {
   });
 }
 
+function renderEditRow(item) {
+  const rate = item[currentPos];
+  return `<tr class="editing-row">
+    <td></td>
+    <td><input class="pay-inline-input" id="ei-code"  value="${escG(item.code)}"  style="width:80px"></td>
+    <td><input class="pay-inline-input" id="ei-label" value="${escG(item.label)}" style="width:140px"></td>
+    <td colspan="2">
+      <span style="font-size:11px;color:#aaa">${currentPos} rate: </span>
+      <input class="pay-inline-input" id="ei-rate" type="number" step="0.01"
+        value="${rate !== null && rate !== undefined ? rate : ''}" style="width:70px" placeholder="N/A">
+    </td>
+    <td>
+      <button class="pay-save-btn" onclick="saveEditRow('${item.key}')">✓</button>
+      <button class="pay-cancel-btn" onclick="cancelEditRow()">✕</button>
+    </td>
+  </tr>`;
+}
+
+function startEditRow(key) { editingRowKey = key; renderPayment(); }
+function cancelEditRow()   { editingRowKey = null; renderPayment(); }
+
+function saveEditRow(key) {
+  const item  = activeItems.find(i => i.key === key);
+  const code  = document.getElementById('ei-code')?.value.trim();
+  const label = document.getElementById('ei-label')?.value.trim();
+  const rate  = document.getElementById('ei-rate')?.value;
+  if (item) {
+    if (code)  item.code  = code;
+    if (label) item.label = label;
+    item[currentPos] = rate === '' ? null : parseFloat(rate);
+  }
+  editingRowKey = null;
+  renderPayment();
+}
+
+function addPayrollItem() {
+  activeItems.push({
+    key:     uidItem(),
+    label:   'New Item',
+    unit:    'ea',
+    code:    '—',
+    primero: 0,
+    segundo: 0,
+    tercero: null,
+    divBy2:  false,
+  });
+  renderPayment();
+}
+
+function deletePayrollItem(key) {
+  activeItems = activeItems.filter(i => i.key !== key);
+  renderPayment();
+}
+
 function updatePaymentTotals() {
   let total = -137;
-  ITEMS.forEach(item => {
-    const rate   = RATES[item.key][currentPos];
-    const isNA   = rate === null;
+  activeItems.forEach(item => {
+    const rate   = item[currentPos];
+    const isNA   = rate === null || rate === undefined;
     const rawQty = payQtys[item.key] || 0;
     const payQty = item.divBy2 ? rawQty / 2 : rawQty;
     const amt    = isNA ? 0 : payQty * rate;
@@ -774,7 +1018,7 @@ function updatePaymentTotals() {
 // ─── BREAKDOWN DRAWER ─────────────────────────────────────────────────────────
 
 function openBreakdown(key, rows) {
-  const item = ITEMS.find(i => i.key === key);
+  const item = activeItems.find(i => i.key === key);
   if (!item) return;
 
   let detailRows;
@@ -890,9 +1134,9 @@ document.getElementById('btn-download').addEventListener('click', () => {
   const today   = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   // Use current payQtys (which may include manual edits)
   let total = 0;
-  let tableRows = ITEMS.map(item => {
-    const rate   = RATES[item.key][currentPos];
-    const isNA   = rate === null;
+  let tableRows = activeItems.map(item => {
+    const rate   = item[currentPos];
+    const isNA   = rate === null || rate === undefined;
     const rawQty = payQtys[item.key] || 0;
     const payQty = item.divBy2 ? rawQty / 2 : rawQty;
     const amt    = isNA ? 0 : payQty * rate;
@@ -904,8 +1148,8 @@ document.getElementById('btn-download').addEventListener('click', () => {
     const dim     = isNA || amt === 0;
 
     return `<tr class="${dim ? 'dim' : ''}">
-      <td class="code">${RATES[item.key].code}</td>
-      <td>${item.label}</td>
+      <td class="code">${escG(item.code)}</td>
+      <td>${escG(item.label)}</td>
       <td class="r">${qtyStr}</td>
       <td class="r">${rateStr}</td>
       <td class="r bold">${amtStr}</td>
