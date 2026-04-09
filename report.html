@@ -178,6 +178,11 @@ header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-spa
   padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .btn-save:hover { background: #1b5e20; }
+.btn-divide {
+  background: #f5f5f5; color: #555; border: 1px solid #e0e0e0; border-radius: 7px;
+  padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.12s;
+}
+.btn-divide:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
 
 /* ── Breakdown drawer ── */
 #breakdown {
@@ -477,6 +482,12 @@ tr.editing-row td { background:#f8f9ff; }
         <div class="total-amount" id="pay-total">$0.00</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:4px;align-items:center">
+          <span style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap">÷ Qty</span>
+          <button class="btn-divide" onclick="divideAllQtys(2)">÷2</button>
+          <button class="btn-divide" onclick="divideAllQtys(3)">÷3</button>
+          <button class="btn-divide" onclick="divideAllQtys(4)">÷4</button>
+        </div>
         <button class="btn-save" id="btn-save" style="display:none">💾 Save Payroll</button>
         <button class="btn-download" id="btn-download">⬇ Download PDF</button>
       </div>
@@ -994,6 +1005,13 @@ function addPayrollItem() {
 
 function deletePayrollItem(key) {
   activeItems = activeItems.filter(i => i.key !== key);
+  renderPayment();
+}
+
+function divideAllQtys(n) {
+  activeItems.forEach(item => {
+    if (payQtys[item.key]) payQtys[item.key] = Math.round(payQtys[item.key] / n);
+  });
   renderPayment();
 }
 
