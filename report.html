@@ -487,6 +487,7 @@ tr.editing-row td { background:#f8f9ff; }
           <button class="btn-divide" onclick="divideAllQtys(2)">÷2</button>
           <button class="btn-divide" onclick="divideAllQtys(3)">÷3</button>
           <button class="btn-divide" onclick="divideAllQtys(4)">÷4</button>
+          <button class="btn-divide" onclick="resetQtys()" style="color:#c0392b;border-color:#f5c6cb">↺</button>
         </div>
         <button class="btn-save" id="btn-save" style="display:none">💾 Save Payroll</button>
         <button class="btn-download" id="btn-download">⬇ Download PDF</button>
@@ -660,23 +661,23 @@ const RATES = {
 // ─── GEORGIA DATA DEFINITIONS ────────────────────────────────────────────────
 const GEORGIA_ITEMS = [
   { key: 'g_c6m',    label: 'C6M',             unit: 'ft',  csvCol: 'C6M',        divBy2: false },
-  { key: 'g_pm11',   label: 'PM11',            unit: 'ft',  csvCol: 'PM11',       divBy2: false },
-  { key: 'g_pfi3',   label: 'PFI-3 (PE13)',    unit: 'ea',  csvCol: 'PFI-3',      divBy2: false },
-  { key: 'g_pm2a',   label: 'PM2A',            unit: 'ft',  csvCol: 'PM2A',       divBy2: false },
-  { key: 'g_mrc',    label: 'Make Ready C',    unit: 'ea',  csvCol: 'MR-C',       divBy2: false },
-  { key: 'g_mrs',    label: 'Make Ready S',    unit: 'ea',                        divBy2: false },
-  { key: 'g_rcd',    label: 'RCD',             unit: 'ea',                        divBy2: false },
-  { key: 'g_pf33',   label: 'PF33 Anchor',     unit: 'ea',  csvCol: 'PF33 ANCHOR',divBy2: false },
-  { key: 'g_pf33a',  label: 'PF33 Aux',        unit: 'ea',  csvCol: 'PF33 AUX',   divBy2: false },
+  { key: 'g_pm11',   label: 'PM11',            unit: 'ft',  csvCol: 'PM11',       divBy2: true  },
+  { key: 'g_pfi3',   label: 'PFI-3 (PE13)',    unit: 'ea',  csvCol: 'PFI-3',      divBy2: true  },
+  { key: 'g_pm2a',   label: 'PM2A',            unit: 'ft',  csvCol: 'PM2A',       divBy2: true  },
+  { key: 'g_mrc',    label: 'Make Ready C',    unit: 'ea',  csvCol: 'MR-C',       divBy2: true  },
+  { key: 'g_mrs',    label: 'Make Ready S',    unit: 'ea',                        divBy2: true  },
+  { key: 'g_rcd',    label: 'RCD',             unit: 'ea',                        divBy2: true  },
+  { key: 'g_pf33',   label: 'PF33 Anchor',     unit: 'ea',  csvCol: 'PF33 ANCHOR',divBy2: true  },
+  { key: 'g_pf33a',  label: 'PF33 Aux',        unit: 'ea',  csvCol: 'PF33 AUX',   divBy2: true  },
   { key: 'g_f24',    label: 'Fibra 24',        unit: 'ft',  csvCol: 'FIBRA 24',   divBy2: false },
   { key: 'g_f48',    label: 'Fibra 48',        unit: 'ft',  csvCol: 'FIBRA 48',   divBy2: false },
   { key: 'g_f96',    label: 'Fibra 96',        unit: 'ft',  csvCol: 'FIBRA 96',   divBy2: false },
   { key: 'g_f144',   label: 'Fibra 144',       unit: 'ft',  csvCol: 'FIBRA 144',  divBy2: false },
   { key: 'g_f288',   label: 'Fibra 288',       unit: 'ft',  csvCol: 'FIBRA 288',  divBy2: false },
-  { key: 'g_mrde',   label: 'MR-DE',           unit: 'ea',                        divBy2: false },
-  { key: 'g_extra',  label: 'Emergency EACA',  unit: 'ea',  csvCol: 'EXTRA',      divBy2: false },
-  { key: 'g_bm80t',  label: 'Riser (BM80T)',   unit: 'ea',  csvCol: 'BM80T',      divBy2: false },
-  { key: 'g_pmsl',   label: 'PMSL',            unit: 'ea',  csvCol: 'PMSL',       divBy2: false },
+  { key: 'g_mrde',   label: 'MR-DE',           unit: 'ea',                        divBy2: true  },
+  { key: 'g_extra',  label: 'Emergency EACA',  unit: 'ea',  csvCol: 'EXTRA',      divBy2: true  },
+  { key: 'g_bm80t',  label: 'Riser (BM80T)',   unit: 'ea',  csvCol: 'BM80T',      divBy2: true  },
+  { key: 'g_pmsl',   label: 'PMSL',            unit: 'ea',  csvCol: 'PMSL',       divBy2: true  },
   { key: 'g_ovlsh',  label: 'Overlash',        unit: 'ft',  csvCol: 'OVERLASH',   divBy2: false },
 ];
 
@@ -744,6 +745,7 @@ let payQtys = {};
 let crewNames = { primero: '', segundo: '', tercero: '' };
 let editingRowKey = null;
 let activeProject = null;
+let baseQtys = {}; // original quantities from file; divide buttons always divide these
 
 // ─── PROJECT SELECTOR ────────────────────────────────────────────────────────
 function initProject(id) {
@@ -878,6 +880,7 @@ function renderAll() {
   document.getElementById('record-count').textContent = `${rows.length.toLocaleString()} records`;
   // Auto-fill quantities from filtered data
   activeItems.forEach(item => { if (item.csvCol || item.taskType) payQtys[item.key] = calcQty(item, rows); });
+  baseQtys = { ...payQtys }; // snapshot for divide/reset
   renderSummary(rows);
   renderPayment();
 }
@@ -948,7 +951,10 @@ function renderPayment() {
   updatePaymentTotals();
   tbody.querySelectorAll('.qty-input').forEach(input => {
     input.addEventListener('input', e => {
-      payQtys[e.target.dataset.key] = parseFloat(e.target.value) || 0;
+      const key = e.target.dataset.key;
+      const val = parseFloat(e.target.value) || 0;
+      payQtys[key] = val;
+      baseQtys[key] = val; // manual edit becomes the new base
       updatePaymentTotals();
     });
   });
@@ -1010,8 +1016,13 @@ function deletePayrollItem(key) {
 
 function divideAllQtys(n) {
   activeItems.forEach(item => {
-    if (payQtys[item.key]) payQtys[item.key] = Math.round(payQtys[item.key] / n);
+    if (baseQtys[item.key]) payQtys[item.key] = Math.round(baseQtys[item.key] / n);
   });
+  renderPayment();
+}
+
+function resetQtys() {
+  payQtys = { ...baseQtys };
   renderPayment();
 }
 
