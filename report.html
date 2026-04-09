@@ -749,8 +749,10 @@ let currentPos = 'primero';
 let payQtys = {};
 let crewNames = { primero: '', segundo: '', tercero: '' };
 let editingRowKey = null;
+let editingDiscountId = null;
 let activeProject = null;
 let baseQtys = {}; // original quantities from file; divide buttons always divide these
+let discounts = [{ id: 'd_hotel', label: 'Discount (Hotel)', amount: 137 }];
 
 // ─── PROJECT SELECTOR ────────────────────────────────────────────────────────
 function initProject(id) {
@@ -999,15 +1001,38 @@ function renderPayment() {
       <td class="r amount" data-amt="${item.key}" style="${isNA ? 'color:#ccc' : amt===0 ? 'color:#ddd' : ''}">${isNA ? 'N/A' : fmtMoney(amt)}</td>
       <td><button class="pay-del-btn" onclick="deletePayrollItem('${item.key}')">✕</button></td>
     </tr>`;
-  }).join('') + `
-    <tr>
-      <td></td>
+  }).join('') +
+  discounts.map(d => {
+    if (d.id === editingDiscountId) {
+      return `<tr class="editing-row">
+        <td></td>
+        <td class="code">—</td>
+        <td><input class="pay-inline-input" id="ed-lbl-${d.id}" value="${escG(d.label)}" style="width:160px"></td>
+        <td colspan="2">
+          <span style="font-size:11px;color:#aaa">amount $</span>
+          <input class="pay-inline-input" id="ed-amt-${d.id}" type="number" step="0.01" min="0"
+            value="${d.amount}" style="width:80px" placeholder="0.00">
+        </td>
+        <td>
+          <button class="pay-save-btn" onclick="saveEditDiscount('${d.id}')">✓</button>
+          <button class="pay-cancel-btn" onclick="cancelEditDiscount()">✕</button>
+        </td>
+        <td></td>
+      </tr>`;
+    }
+    const disp = d.amount > 0 ? `-${fmtMoney(d.amount)}` : '—';
+    return `<tr>
+      <td><button class="pay-edit-btn" onclick="startEditDiscount('${d.id}')">✎</button></td>
       <td class="code">—</td>
-      <td class="name" style="color:#c0392b">Discount (Hotel)</td>
+      <td class="name" style="color:#c0392b">${escG(d.label)}</td>
       <td colspan="2" style="color:#aaa;padding:10px;font-size:12px">fixed</td>
-      <td class="r amount" style="color:#c0392b">-$137.00</td>
-      <td></td>
+      <td class="r amount" style="color:#c0392b">${disp}</td>
+      <td><button class="pay-del-btn" onclick="deleteDiscount('${d.id}')">✕</button></td>
     </tr>`;
+  }).join('') +
+  `<tr><td colspan="7" style="padding:4px 10px 8px">
+    <button class="btn-add-item" onclick="addDiscount()" style="color:#c0392b;border-color:#f5c6cb;border-style:dashed">+ Add Discount</button>
+  </td></tr>`;
 
   updatePaymentTotals();
   tbody.querySelectorAll('.qty-input').forEach(input => {
@@ -1075,6 +1100,30 @@ function deletePayrollItem(key) {
   renderPayment();
 }
 
+function startEditDiscount(id)  { editingDiscountId = id;   renderPayment(); }
+function cancelEditDiscount()   { editingDiscountId = null; renderPayment(); }
+function saveEditDiscount(id) {
+  const d = discounts.find(x => x.id === id);
+  if (d) {
+    const lbl = document.getElementById('ed-lbl-' + id)?.value.trim();
+    const amt = parseFloat(document.getElementById('ed-amt-' + id)?.value);
+    if (lbl) d.label = lbl;
+    if (!isNaN(amt)) d.amount = amt;
+  }
+  editingDiscountId = null;
+  renderPayment();
+}
+function addDiscount() {
+  const id = 'd_' + Date.now().toString(36);
+  discounts.push({ id, label: 'Discount', amount: 0 });
+  editingDiscountId = id;
+  renderPayment();
+}
+function deleteDiscount(id) {
+  discounts = discounts.filter(x => x.id !== id);
+  renderPayment();
+}
+
 function divideAllQtys(n) {
   activeItems.forEach(item => {
     if (baseQtys[item.key]) payQtys[item.key] = Math.round(baseQtys[item.key] / n);
@@ -1088,7 +1137,8 @@ function resetQtys() {
 }
 
 function updatePaymentTotals() {
-  let total = -137;
+  let total = 0;
+  discounts.forEach(d => { total -= d.amount; });
   activeItems.forEach(item => {
     const rate = item[currentPos];
     const isNA = rate === null || rate === undefined;
@@ -1257,14 +1307,16 @@ document.getElementById('btn-download').addEventListener('click', () => {
     </tr>`;
   }).join('');
 
-  const HOTEL_DISCOUNT = -137;
-  total += HOTEL_DISCOUNT;
-  tableRows += `<tr class="discount-row">
-    <td class="code">—</td>
-    <td>Discount (Hotel)</td>
-    <td class="r" colspan="2">fixed</td>
-    <td class="r bold" style="color:#c0392b">-$137.00</td>
-  </tr>`;
+  discounts.forEach(d => {
+    total -= d.amount;
+    const disp = d.amount > 0 ? `-${fmtMoney(d.amount)}` : '—';
+    tableRows += `<tr class="discount-row">
+      <td class="code">—</td>
+      <td>${escG(d.label)}</td>
+      <td class="r" colspan="2">fixed</td>
+      <td class="r bold" style="color:#c0392b">${disp}</td>
+    </tr>`;
+  });
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>Payment — ${pos}</title>
@@ -1394,7 +1446,8 @@ document.getElementById('btn-download').addEventListener('click', () => {
         document.getElementById('meta-crew-name').value = pr.crew || '';
         if (pr.period) document.getElementById('meta-period').value = pr.period;
 
-        // Restore quantities and re-render
+        // Restore quantities, discounts, and re-render
+        if (pr.discounts) discounts = pr.discounts;
         if (pr.qtys) { payQtys = { ...pr.qtys }; renderPayment(); }
 
         // Skip upload overlay — go straight to the editor
@@ -1437,13 +1490,14 @@ document.getElementById('btn-download').addEventListener('click', () => {
     const totalText = document.getElementById('pay-total').textContent;
 
     const record = {
-      id:       prid || Date.now().toString(36),
-      position: currentPos,
+      id:        prid || Date.now().toString(36),
+      position:  currentPos,
       crew,
       period,
-      qtys:     { ...payQtys },
-      total:    parseFloat(totalText.replace(/[$,]/g, '')) || 0,
-      savedAt:  new Date().toISOString(),
+      qtys:      { ...payQtys },
+      discounts: discounts.map(d => ({ ...d })),
+      total:     parseFloat(totalText.replace(/[$,]/g, '')) || 0,
+      savedAt:   new Date().toISOString(),
     };
 
     if (prid) {
