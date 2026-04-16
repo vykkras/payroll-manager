@@ -1,0 +1,144 @@
+/* ── Screen ── */
+
+.overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #d8d8d8;
+  display: flex; flex-direction: column;
+}
+
+.toolbar {
+  background: #1a1a2e; color: #fff;
+  padding: 0 20px; height: 48px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.toolbarLeft  { display: flex; align-items: center; }
+.toolbarTitle { font-size: 13px; font-weight: 600; }
+.toolbarRight { display: flex; gap: 10px; }
+
+.btnPrint {
+  background: #2e7d32; color: #fff; border: none;
+  border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btnPrint:hover { background: #1b5e20; }
+.btnClose {
+  background: none; border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.7); border-radius: 6px;
+  padding: 7px 14px; font-size: 13px; cursor: pointer;
+}
+.btnClose:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
+
+.pageWrap {
+  flex: 1; overflow-y: auto;
+  padding: 30px; display: flex; justify-content: center;
+}
+
+/* ── The paper ── */
+.page {
+  background: #fff;
+  width: 816px; min-height: 1056px;
+  padding: 52px 60px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e;
+  box-sizing: border-box; position: relative;
+}
+
+/* Header */
+.pageHeader {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 14px;
+}
+.headerLeft  { display: flex; flex-direction: column; gap: 3px; }
+.companyName { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #1a1a2e; }
+.projectName { font-size: 15px; font-weight: 700; color: #333; margin-top: 2px; }
+.folderName  { font-size: 12px; color: #888; }
+
+.headerRight { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.positionBadge {
+  font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+  border: 2px solid; border-radius: 6px; padding: 3px 12px;
+}
+.crewName { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+.period   { font-size: 12px; color: #666; font-weight: 600; }
+
+.rule { border: none; border-top: 2px solid #1a1a2e; margin: 14px 0; }
+
+/* Sections */
+.sectionLabel {
+  font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; color: #999; margin: 14px 0 8px;
+}
+
+.noData { font-size: 11px; color: #bbb; font-style: italic; margin: 6px 0; }
+
+/* Table */
+.table { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 11px; }
+.table thead th {
+  background: #1a1a2e; color: rgba(255,255,255,0.9);
+  padding: 6px 8px; text-align: left;
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.table tbody td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
+.table tbody tr:last-child td { border-bottom: none; }
+.rowAlt td { background: #f8f8f8; }
+
+.colCode   { width: 60px; }
+.colCenter { text-align: center !important; width: 48px; }
+.colRight  { text-align: right !important; width: 80px; }
+.tdCode    { font-weight: 700; color: #3949ab; font-size: 10px; }
+.tdCenter  { text-align: center; color: #888; }
+.tdRight   { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Totals */
+.totalsBlock {
+  margin-top: 10px; display: flex; flex-direction: column;
+  align-items: flex-end; gap: 4px;
+}
+.totalLine {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: #555; font-variant-numeric: tabular-nums;
+  width: 260px;
+}
+.totalLineFinal {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
+  border-top: 2px solid #1a1a2e; padding-top: 6px; margin-top: 4px;
+  width: 260px;
+}
+.totalLineFinal span:first-child { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Signature */
+.signatureRow {
+  display: flex; gap: 60px; margin-top: 40px;
+}
+.signatureBlock { flex: 1; }
+.signatureLine  { border-bottom: 1px solid #333; margin-bottom: 6px; height: 32px; }
+.signatureLabel { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Footer */
+.pageFooter {
+  position: absolute; bottom: 32px; left: 60px; right: 60px;
+  display: flex; justify-content: space-between;
+  font-size: 9px; color: #bbb; border-top: 1px solid #eee; padding-top: 8px;
+}
+
+/* ── Print media — only the .page renders, nothing else ── */
+@media print {
+  .overlay {
+    position: static !important;
+    background: none !important;
+    display: block !important;
+  }
+  .toolbar { display: none !important; }
+  .pageWrap {
+    padding: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .page {
+    box-shadow: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 12mm 16mm !important;
+  }
+  .pageFooter { position: static; margin-top: 24px; }
+}

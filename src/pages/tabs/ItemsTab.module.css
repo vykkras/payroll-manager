@@ -1,0 +1,50 @@
+.wrap { }
+.ph { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
+.ph h2 { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+.ph p  { font-size: 13px; color: #aaa; }
+.btnAdd { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btnAdd:hover { background: #2c2c4a; }
+
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+.table thead th {
+  background: #1a1a2e; color: rgba(255,255,255,0.7);
+  padding: 9px 12px; text-align: left;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.table tbody td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover td { background: #fafbff; }
+.code  { font-size: 11px; font-weight: 700; color: #3949ab; }
+.label { font-weight: 500; }
+.unit  { color: #aaa; font-size: 11px; }
+.r { text-align: right; font-variant-numeric: tabular-nums; }
+.c { text-align: center; color: #2e7d32; font-weight: 700; }
+.actions { white-space: nowrap; text-align: right; }
+.editBtn { background: none; border: 1px solid #e0e0e0; border-radius: 5px; padding: 4px 8px; font-size: 11px; color: #aaa; cursor: pointer; margin-right: 4px; }
+.editBtn:hover { color: #3949ab; border-color: #3949ab; }
+.delBtn  { background: none; border: 1px solid #e0e0e0; border-radius: 5px; padding: 4px 8px; font-size: 11px; color: #ccc; cursor: pointer; }
+.delBtn:hover { color: #c0392b; border-color: #c0392b; }
+
+.empty { text-align: center; padding: 60px 20px; color: #ccc; }
+.emptyIcon { font-size: 40px; margin-bottom: 12px; display: block; }
+.empty h3 { font-size: 14px; color: #bbb; margin-bottom: 5px; }
+.empty p  { font-size: 13px; }
+
+/* Form */
+.formGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.rateRow  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.field { margin-bottom: 12px; }
+.field label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #aaa; display: block; margin-bottom: 5px; }
+.field input { width: 100%; border: 1px solid #e0e0e0; border-radius: 7px; padding: 8px 10px; font-size: 13px; box-sizing: border-box; }
+.field input:focus { outline: none; border-color: #3949ab; }
+.checkRow { margin-bottom: 12px; }
+.checkLabel { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; cursor: pointer; }
+.checkLabel input { cursor: pointer; }
+.footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.btnCancel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: #666; }
+.btnCancel:hover { background: #f5f5f5; }
+.btnOk { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btnOk:disabled { opacity: 0.4; cursor: default; }
+.btnDel { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.delMsg { font-size: 13px; color: #888; margin-bottom: 4px; }

@@ -1,0 +1,46 @@
+.wrap { max-width: 600px; }
+.ph { margin-bottom: 20px; }
+.ph h2 { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+.ph p  { font-size: 13px; color: #aaa; }
+
+.addRow { display: flex; gap: 8px; margin-bottom: 20px; }
+.addInput { flex: 1; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.addInput:focus { outline: none; border-color: #3949ab; }
+.btnAdd { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btnAdd:disabled { opacity: 0.4; cursor: default; }
+.btnAdd:not(:disabled):hover { background: #2c2c4a; }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.row { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
+.row:hover { border-color: #c5cae9; }
+.num { font-size: 11px; font-weight: 700; color: #bbb; width: 20px; text-align: center; flex-shrink: 0; }
+.colName { font-size: 14px; font-weight: 600; color: #1a1a2e; flex: 1; }
+.filterBtn {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 4px 10px; font-size: 11px; font-weight: 600; color: #bbb;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.filterBtn:hover { border-color: #3949ab; color: #3949ab; }
+.filterBtnOn { background: #e8eaf6; border-color: #3949ab; color: #3949ab; }
+.rowActions { display: flex; gap: 6px; }
+.editBtn { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #888; cursor: pointer; }
+.editBtn:hover { color: #3949ab; border-color: #3949ab; }
+.delBtn { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: #ccc; cursor: pointer; }
+.delBtn:hover { color: #c0392b; border-color: #c0392b; }
+
+.empty { text-align: center; padding: 60px 20px; color: #ccc; }
+.emptyIcon { font-size: 40px; margin-bottom: 12px; display: block; }
+.empty h3 { font-size: 14px; color: #bbb; margin-bottom: 5px; }
+.empty p  { font-size: 13px; }
+
+.field { margin-bottom: 14px; }
+.field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #aaa; display: block; margin-bottom: 6px; }
+.field input { width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 11px; font-size: 13px; box-sizing: border-box; }
+.field input:focus { outline: none; border-color: #3949ab; }
+.footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+.btnCancel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 16px; font-size: 13px; cursor: pointer; color: #666; }
+.btnCancel:hover { background: #f5f5f5; }
+.btnOk { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btnOk:disabled { opacity: 0.4; cursor: default; }
+.btnDel { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.delMsg { font-size: 13px; color: #888; margin-bottom: 4px; }

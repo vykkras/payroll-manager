@@ -1,0 +1,196 @@
+.page { min-height: 100vh; display: flex; flex-direction: column; background: #f8f8fb; }
+
+/* Header */
+.header {
+  background: #1a1a2e; color: #fff;
+  padding: 0 20px; height: 52px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.logo { font-size: 15px; font-weight: 800; }
+.logo span { color: #7986cb; }
+.backBtn {
+  font-size: 13px; color: rgba(255,255,255,0.5);
+  background: none; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px; padding: 4px 10px; cursor: pointer;
+}
+.backBtn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+.breadcrumb { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 5px; flex: 1; flex-wrap: wrap; }
+.projName { color: rgba(255,255,255,0.45); font-weight: 400; }
+.bcItem { display: flex; align-items: center; gap: 5px; }
+.sep { color: rgba(255,255,255,0.25); }
+.btnEditor {
+  background: #3949ab; color: #fff; border: none;
+  border-radius: 7px; padding: 7px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnEditor:hover { background: #283593; }
+.btnSummary {
+  background: none; border: 1px solid rgba(255,255,255,0.3); border-radius: 7px;
+  padding: 7px 14px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.75);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnSummary:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
+
+/* Main */
+.main { padding: 24px 28px; max-width: 960px; margin: 0 auto; width: 100%; flex: 1; }
+.ph {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px; gap: 16px;
+}
+.ph h2 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; }
+.ph p  { font-size: 12px; color: #aaa; }
+.btnAdd {
+  background: #1a1a2e; color: #fff; border: none;
+  padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnAdd:hover { background: #2c2c4a; }
+
+/* Sections */
+.section { margin-bottom: 28px; }
+.sectionLabel {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #bbb; margin-bottom: 10px;
+}
+
+/* Folder grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.folderCard {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
+  padding: 18px 16px; cursor: pointer; position: relative;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.folderCard:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); border-color: #c5cae9; }
+.cardIcon { font-size: 26px; display: block; margin-bottom: 8px; }
+.cardName { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+.cardMeta { font-size: 11px; color: #aaa; }
+.folderCard .delBtn { position: absolute; top: 8px; right: 8px; opacity: 0; }
+.folderCard:hover .delBtn { opacity: 1; }
+
+/* Payroll cards */
+.payrollList { display: flex; flex-direction: column; gap: 10px; }
+.payrollCard {
+  background: #fff; border-radius: 10px; border: 1px solid #e8e8e8;
+  padding: 14px 16px; cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.payrollCard:hover { box-shadow: 0 3px 14px rgba(0,0,0,0.07); border-color: #c5cae9; }
+.payrollCardHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.payrollPeriod { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+.payrollCardActions { display: flex; gap: 6px; }
+.printPayrollBtn {
+  background: none; border: 1px solid #e0e0e0; border-radius: 5px;
+  padding: 3px 8px; font-size: 12px; cursor: pointer; color: #888;
+}
+.printPayrollBtn:hover { border-color: #3949ab; color: #3949ab; }
+
+.payrollPositions { display: flex; flex-direction: column; gap: 5px; }
+.payrollPosRow { display: flex; align-items: center; gap: 10px; }
+.posBadge { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 800; letter-spacing: 0.3px; white-space: nowrap; flex-shrink: 0; }
+.payrollCrew { font-size: 13px; font-weight: 600; color: #333; flex: 1; }
+.payrollTotal { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.payrollCardHint { font-size: 10px; color: #ccc; margin-top: 10px; text-align: right; }
+
+/* Print position picker */
+.printPosRow { display: flex; gap: 8px; margin-bottom: 4px; }
+.printPosBtn {
+  flex: 1; padding: 8px; border: 1px solid #e0e0e0; border-radius: 7px;
+  font-size: 12px; font-weight: 600; color: #888; background: #fff; cursor: pointer;
+}
+.printPosBtn:hover { border-color: #3949ab; color: #3949ab; }
+.printPosBtnOn { color: #fff !important; }
+
+.delBtn {
+  background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 4px 8px; font-size: 11px; color: #ccc; cursor: pointer; flex-shrink: 0;
+}
+.delBtn:hover { color: #c0392b; border-color: #c0392b; }
+
+/* Empty state */
+.empty { text-align: center; padding: 72px 20px; color: #ccc; }
+.emptyIcon { font-size: 48px; margin-bottom: 14px; display: block; }
+.empty h3 { font-size: 15px; color: #bbb; margin-bottom: 6px; font-weight: 600; }
+.empty p  { font-size: 13px; margin-bottom: 20px; }
+.emptyBtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btnEditorAlt {
+  background: #3949ab; color: #fff; border: none;
+  padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.btnEditorAlt:hover { background: #283593; }
+
+/* Modal helpers */
+.field { margin-bottom: 16px; }
+.field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #aaa; display: block; margin-bottom: 6px; }
+.field input { width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 11px; font-size: 13px; box-sizing: border-box; }
+.field input:focus { outline: none; border-color: #3949ab; }
+.footerBtns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.btnCancel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; color: #666; }
+.btnCancel:hover { background: #f5f5f5; }
+.btnOk { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btnOk:disabled { opacity: 0.4; cursor: default; }
+.btnDel { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.delMsg { font-size: 13px; color: #888; margin-bottom: 4px; }
+
+/* Summary panel */
+.summaryPanel {
+  background: #1a1a2e; border-radius: 14px;
+  padding: 20px 22px; margin-bottom: 28px; position: relative;
+}
+.summaryPanelTitle {
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+  color: rgba(255,255,255,0.35); margin-bottom: 16px;
+}
+.summaryGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.summaryBlock { }
+.summaryBlockLabel {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.4); margin-bottom: 5px;
+}
+.summaryBlockVal {
+  font-size: 22px; font-weight: 800; color: #fff;
+  font-variant-numeric: tabular-nums; margin-bottom: 4px;
+}
+.summaryBlockValPct {
+  font-size: 26px; font-weight: 800;
+  font-variant-numeric: tabular-nums; margin-bottom: 4px;
+}
+.summaryBlockSub {
+  font-size: 11px; color: rgba(255,255,255,0.35);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.summaryBlockPct { }
+.summaryLine { display: block; }
+.summaryEditBtn {
+  position: absolute; top: 18px; right: 18px;
+  background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
+  padding: 4px 10px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+  cursor: pointer;
+}
+.summaryEditBtn:hover { color: #fff; border-color: rgba(255,255,255,0.5); }
+
+/* Summary modal */
+.summaryModalHint { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+.summaryLines { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.summaryLineRow { display: flex; align-items: center; gap: 8px; }
+.summaryLineLabel {
+  flex: 1; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; box-sizing: border-box;
+}
+.summaryLineLabel:focus { outline: none; border-color: #3949ab; }
+.summaryLineAmount {
+  width: 120px; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; box-sizing: border-box; text-align: right;
+}
+.summaryLineAmount:focus { outline: none; border-color: #3949ab; }
+.summaryLineRemove {
+  background: none; border: none; color: #ccc; cursor: pointer;
+  font-size: 14px; padding: 4px 6px; border-radius: 5px; flex-shrink: 0;
+}
+.summaryLineRemove:hover:not(:disabled) { color: #c0392b; }
+.summaryLineRemove:disabled { opacity: 0.3; cursor: default; }
+.summaryAddLine {
+  background: none; border: 1px dashed #d0d0d0; border-radius: 8px;
+  width: 100%; padding: 8px; font-size: 12px; color: #aaa; cursor: pointer; margin-bottom: 4px;
+}
+.summaryAddLine:hover { border-color: #3949ab; color: #3949ab; }

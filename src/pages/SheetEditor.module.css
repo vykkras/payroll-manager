@@ -1,0 +1,111 @@
+.page { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Header */
+.header {
+  background: #1a1a2e; color: #fff;
+  padding: 0 20px; height: 52px;
+  display: flex; align-items: center; gap: 14px;
+  flex-shrink: 0; z-index: 10;
+}
+.logo { font-size: 15px; font-weight: 800; }
+.logo span { color: #7986cb; }
+.backBtn {
+  font-size: 12px; color: rgba(255,255,255,0.5);
+  background: none; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px; padding: 4px 10px; cursor: pointer; white-space: nowrap;
+}
+.backBtn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+.breadcrumb { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 6px; flex: 1; }
+.sep { color: rgba(255,255,255,0.3); }
+.sheetLabel { color: rgba(255,255,255,0.6); font-weight: 400; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.btnOpenEditor {
+  background: #3949ab; color: #fff; border: none;
+  border-radius: 7px; padding: 7px 16px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnOpenEditor:hover { background: #283593; }
+
+/* Subsector buttons bar */
+.subBtnsBar {
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 8px 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+}
+.subBtnsLabel { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.subBtn {
+  border: 1px solid #e0e0e0; border-radius: 20px;
+  padding: 4px 12px; font-size: 12px; font-weight: 600; color: #666;
+  background: #fff; cursor: pointer; transition: all 0.12s; white-space: nowrap;
+}
+.subBtn:hover { border-color: #3949ab; color: #3949ab; background: #f0f4ff; }
+.subBtnActive { background: #3949ab; color: #fff; border-color: #3949ab; }
+.subBtnActive:hover { background: #283593; }
+
+/* Fallback filter bar (when no subsectors, just dropdowns) */
+.filterBar {
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 0 20px; height: 48px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.filterLabel { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.filterSelect {
+  border: 1px solid #e0e0e0; border-radius: 7px; padding: 5px 24px 5px 9px;
+  font-size: 13px; color: #333; background: #fafafa; cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+.filterSelect:focus { outline: none; border-color: #3949ab; }
+.divider { width: 1px; height: 20px; background: #e8e8e8; flex-shrink: 0; }
+.recordCount { font-size: 12px; color: #aaa; margin-left: auto; white-space: nowrap; }
+
+/* Summary page layout */
+.summaryPage {
+  flex: 1; display: flex; flex-direction: column;
+  max-width: 700px; margin: 0 auto; width: 100%; padding: 0 24px;
+}
+.panelHeader {
+  padding: 20px 0 14px; flex-shrink: 0;
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.panelTitle { font-size: 17px; font-weight: 700; color: #1a1a2e; }
+.panelSub   { font-size: 12px; color: #aaa; }
+.summaryWrap { flex: 1; overflow-y: auto; padding-bottom: 40px; }
+
+.summaryTable { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+.summaryTable thead th {
+  background: #1a1a2e; color: rgba(255,255,255,0.7);
+  padding: 9px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.summaryTable tbody td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.summaryTable tbody tr:last-child td { border-bottom: none; }
+.summaryTable tbody tr:hover td { background: #fafbff; }
+.itemName { font-weight: 500; color: #444; }
+.itemUnit { font-size: 11px; color: #bbb; }
+.itemTotal { font-weight: 700; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+.zero { color: #ddd; font-weight: 400; }
+.r { text-align: right; }
+
+.noConfig { font-size: 13px; color: #bbb; padding: 24px 0; text-align: center; }
+
+.colWarn {
+  background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px;
+  padding: 10px 14px; font-size: 12px; color: #e65100; margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* PayrollSaveModal (pick folder + week) */
+.pickWrap { display: flex; flex-direction: column; gap: 14px; }
+.pickHint { font-size: 13px; color: #888; margin: 0; }
+.pickRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pickField label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #aaa; display: block; margin-bottom: 6px; }
+.pickField select { width: 100%; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 11px; font-size: 13px; color: #333; background: #fafafa; }
+.pickField select:focus { outline: none; border-color: #3949ab; }
+.pickField select:disabled { background: #f5f5f5; color: #bbb; }
+.pickActions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.btnCancel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; color: #666; }
+.btnCancel:hover { background: #f5f5f5; }
+.btnOpenEditor { background: #3949ab; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btnOpenEditor:hover { background: #283593; }
+.btnOpenEditor:disabled { opacity: 0.4; cursor: not-allowed; }
+.savedMsg { text-align: center; color: #2e7d32; font-weight: 600; font-size: 14px; padding: 8px 0; }

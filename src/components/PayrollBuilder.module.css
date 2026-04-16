@@ -1,0 +1,146 @@
+.wrap { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+/* Position tabs */
+.posTabs { display: flex; border-bottom: 1px solid #ececec; flex-shrink: 0; }
+.posTab {
+  flex: 1; padding: 10px 8px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #aaa;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.posTab:hover { color: #3949ab; background: #f8f9fb; }
+.posTabActive { color: #3949ab; border-bottom-color: #3949ab; }
+.posLabel { font-size: 13px; font-weight: 600; }
+.posSub { font-size: 10px; font-weight: 400; opacity: 0.7; }
+.posAmt { font-size: 11px; font-weight: 700; color: #2e7d32; margin-top: 1px; }
+
+/* Saved crew cards */
+.crewBar { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; flex-shrink: 0; border-bottom: 1px solid #f0f0f0; overflow-x: auto; }
+.crewBarLabel { font-size: 10px; font-weight: 700; color: #ccc; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; padding-top: 8px; flex-shrink: 0; }
+.crewCards { display: flex; gap: 8px; }
+.crewCard { background: #f8f9fb; border: 1px solid #e8e8e8; border-radius: 8px; padding: 7px 10px; cursor: pointer; position: relative; min-width: 100px; flex-shrink: 0; }
+.crewCard:hover { border-color: #c5cae9; background: #f0f4ff; }
+.crewCardName { font-size: 12px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+.crewCardLine { font-size: 10px; color: #888; display: flex; align-items: center; gap: 4px; }
+.crewCardLine span { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.crewDel { position: absolute; top: 4px; right: 4px; background: none; border: none; color: #ccc; font-size: 10px; cursor: pointer; padding: 1px 3px; opacity: 0; }
+.crewCard:hover .crewDel { opacity: 1; }
+.crewDel:hover { color: #c0392b; }
+.btnSaveCrew { background: #e8eaf6; color: #3949ab; border: none; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btnSaveCrew:hover { background: #c5cae9; }
+
+/* Meta */
+.metaRow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; padding: 12px 0 10px; flex-shrink: 0; border-bottom: 1px solid #f0f0f0; align-items: end; }
+.metaSaveCrew { padding-bottom: 1px; }
+.metaField label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+.metaField input, .metaField select {
+  width: 100%; border: 1px solid #e4e4e4; border-radius: 6px;
+  padding: 7px 9px; font-size: 12px; color: #333; background: #fafafa;
+}
+.metaField input:focus, .metaField select:focus { outline: none; border-color: #3949ab; }
+
+/* Auto-fill bar */
+.autoFillBar { display: flex; align-items: center; gap: 12px; padding: 8px 0; flex-shrink: 0; border-bottom: 1px solid #f0f0f0; }
+.autoFillHint { font-size: 12px; color: #aaa; flex: 1; }
+.autoFillBtn { background: #e8eaf6; color: #3949ab; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.autoFillBtn:hover { background: #c5cae9; }
+
+/* Items table */
+.tableWrap { flex: 1; overflow-y: auto; min-height: 0; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table thead th {
+  padding: 8px 6px; text-align: left;
+  font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px;
+  border-bottom: 2px solid #e8e8e8; white-space: nowrap;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.table tbody td { padding: 7px 6px; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+.table tbody tr:last-child td { border-bottom: none; }
+.naRow td { opacity: 0.35; }
+.tc { text-align: center; }
+.tr { text-align: right; }
+.code { font-size: 11px; font-weight: 700; color: #aaa; }
+.name { color: #333; white-space: normal; max-width: 160px; }
+.desc { color: #333; white-space: normal; max-width: 160px; }
+.unit { font-size: 11px; color: #bbb; }
+.unitTxt { font-size: 11px; color: #bbb; }
+.divBadge { background: #e8eaf6; color: #3949ab; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+.amount { font-weight: 700; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+.dim { color: #ccc; font-weight: 400; }
+
+.rateInput {
+  width: 70px; border: 1px solid #e0e0e0; border-radius: 5px;
+  padding: 4px 6px; font-size: 12px; text-align: right;
+  color: #666; background: #fafafa;
+}
+.rateInput:focus { outline: none; border-color: #3949ab; }
+.rateInput:disabled { background: #f8f8f8; color: #ddd; border-color: #f0f0f0; }
+
+.qtyInput {
+  width: 70px; border: 1px solid #e0e0e0; border-radius: 5px;
+  padding: 4px 6px; font-size: 13px; text-align: right;
+  color: #1a1a2e; background: #fafafa; font-variant-numeric: tabular-nums;
+}
+.qtyInput:focus { outline: none; border-color: #3949ab; background: #fff; }
+.qtyAuto { background: #f0f4ff; border-color: #c5cae9; color: #3949ab; }
+
+/* Discounts */
+.discountsSection { flex-shrink: 0; border-top: 1px solid #e8e8e8; padding: 10px 0; }
+.discountsHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.discountsTitle { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; }
+.btnAddDiscount { background: none; border: 1px dashed #ccc; border-radius: 6px; padding: 3px 10px; font-size: 11px; color: #aaa; cursor: pointer; }
+.btnAddDiscount:hover { border-color: #c0392b; color: #c0392b; }
+.discountRows { display: flex; flex-direction: column; gap: 6px; }
+.discountRow { display: flex; gap: 8px; align-items: center; }
+.discountLabel { flex: 1; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px 9px; font-size: 12px; color: #333; background: #fafafa; }
+.discountLabel:focus { outline: none; border-color: #c0392b; }
+.discountAmt { width: 90px; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px 9px; font-size: 12px; text-align: right; color: #c0392b; background: #fafafa; font-variant-numeric: tabular-nums; }
+.discountAmt:focus { outline: none; border-color: #c0392b; }
+.discountDel { background: none; border: none; color: #ccc; font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.discountDel:hover { color: #c0392b; }
+
+/* 3-position summary */
+.summary {
+  flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; padding: 10px 0 8px; border-top: 1px solid #ececec;
+}
+.summaryCard {
+  border: 2px solid #ececec; border-radius: 8px; padding: 8px 10px;
+  cursor: pointer; transition: border-color 0.12s; display: flex; flex-direction: column; gap: 2px;
+}
+.summaryCard:hover { background: #f8f9fb; }
+.summaryCardActive { background: #f8f9ff; }
+.summaryPos { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+.summaryCrew { font-size: 12px; font-weight: 600; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 16px; }
+.summaryEmpty { color: #ccc; font-weight: 400; }
+.summarySub { font-size: 11px; color: #aaa; font-variant-numeric: tabular-nums; }
+.summaryDisc { font-size: 11px; color: #c0392b; font-variant-numeric: tabular-nums; }
+.summaryTotal { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+/* Footer */
+.footer { flex-shrink: 0; border-top: 2px solid #1a1a2e; padding: 10px 0 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.footerControls { display: flex; gap: 6px; align-items: center; }
+.btnFillAll {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; color: #888; cursor: pointer;
+  white-space: nowrap;
+}
+.btnFillAll:hover { border-color: #3949ab; color: #3949ab; }
+.btnFillAllOn { background: #3949ab; color: #fff !important; border-color: #3949ab !important; }
+.btnFillAllOn:hover { background: #2c3b8f; }
+.dividerV { width: 1px; height: 20px; background: #e0e0e0; margin: 0 2px; }
+.divideBar { display: flex; gap: 6px; align-items: center; }
+.divideLabel { font-size: 10px; font-weight: 700; color: #ccc; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.btnDiv { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #666; cursor: pointer; }
+.btnDiv:hover { border-color: #3949ab; color: #3949ab; }
+.btnReset { background: #fff; border: 1px solid #f5c6cb; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #c0392b; cursor: pointer; }
+.btnReset:hover { background: #fff5f5; }
+
+.footerBtns { display: flex; gap: 10px; }
+.btnCancel { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; color: #666; }
+.btnCancel:hover { background: #f5f5f5; }
+.btnSave { background: #2e7d32; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btnSave:hover { background: #1b5e20; }
+.btnSave:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.noItems { font-size: 13px; color: #bbb; text-align: center; padding: 32px 0; }

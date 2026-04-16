@@ -1,0 +1,130 @@
+.wrap {}
+
+.ph {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px; gap: 16px;
+}
+.ph h2 { font-size: 18px; font-weight: 700; }
+.ph p  { font-size: 13px; color: #aaa; margin-top: 3px; }
+
+.btnAdd {
+  background: #1a1a2e; color: #fff; border: none;
+  padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnAdd:hover { background: #2c2c4a; }
+
+/* List */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.payrollRow {
+  background: #fff; border-radius: 12px; border: 1px solid #e8e8e8;
+  padding: 14px 18px; display: flex; align-items: center; gap: 16px;
+}
+.posBadge {
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.3px; white-space: nowrap; flex-shrink: 0;
+}
+.pos_primero { background: #e8eaf6; color: #3949ab; }
+.pos_segundo { background: #e8f5e9; color: #2e7d32; }
+.pos_tercero { background: #fff3e0; color: #e65100; }
+
+.prInfo { flex: 1; min-width: 0; }
+.prName { font-size: 14px; font-weight: 600; }
+.prMeta { font-size: 12px; color: #aaa; margin-top: 2px; }
+.prTotal { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.delBtn {
+  background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 10px; font-size: 12px; color: #aaa; cursor: pointer; flex-shrink: 0;
+}
+.delBtn:hover { color: #c0392b; border-color: #c0392b; }
+
+/* Empty */
+.empty { text-align: center; padding: 72px 20px; color: #ccc; }
+.emptyIcon { font-size: 48px; margin-bottom: 14px; display: block; }
+.empty h3 { font-size: 15px; color: #bbb; margin-bottom: 6px; }
+.empty p  { font-size: 13px; }
+
+/* ── Builder ────────────────────────────────────────────────────────────── */
+.posTabs { display: flex; border-bottom: 1px solid #e8e8e8; margin-bottom: 16px; }
+.posTab {
+  flex: 1; padding: 12px 8px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #aaa;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+}
+.posTab:hover { color: #3949ab; }
+.posTabActive { color: #3949ab; border-bottom-color: #3949ab; }
+.posSub { font-size: 10px; font-weight: 400; display: block; opacity: 0.7; margin-top: 1px; }
+
+.metaRow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.metaField label {
+  font-size: 10px; font-weight: 700; color: #bbb;
+  text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px;
+}
+.metaField input {
+  width: 100%; border: 1px solid #e0e0e0; border-radius: 7px;
+  padding: 8px 10px; font-size: 13px; color: #1a1a2e; background: #fafafa;
+}
+.metaField input:focus { outline: none; border-color: #3949ab; }
+
+/* Items table */
+.itemsWrap { margin-bottom: 16px; }
+.itemsHead {
+  display: grid;
+  grid-template-columns: 55px 1.6fr 50px 80px 80px 90px;
+  gap: 8px; padding: 4px 0 8px;
+  font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.3px;
+  border-bottom: 1px solid #e8e8e8;
+}
+.tr { text-align: right; }
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 55px 1.6fr 50px 80px 80px 90px;
+  gap: 8px; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #f5f5f5;
+}
+.code { font-size: 11px; font-weight: 700; color: #aaa; }
+.desc { font-size: 13px; color: #333; }
+.unit { font-size: 11px; color: #bbb; }
+
+.numInput {
+  width: 100%; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 8px; font-size: 12px; background: #fafafa; color: #1a1a2e;
+  text-align: right;
+}
+.numInput:focus { outline: none; border-color: #3949ab; background: #fff; }
+
+.amount { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.dim { color: #ccc; font-weight: 400; }
+
+.noItems { font-size: 13px; color: #bbb; text-align: center; padding: 24px 0; }
+
+/* Footer */
+.builderFooter {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 16px; border-top: 2px solid #1a1a2e; margin-top: 8px;
+}
+.totalLabel { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+.totalAmount { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.footerBtns { display: flex; gap: 10px; align-items: center; }
+
+.btnCancel {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 9px 18px; font-size: 13px; cursor: pointer; color: #666;
+}
+.btnCancel:hover { background: #f5f5f5; }
+.btnSave {
+  background: #2e7d32; color: #fff; border: none;
+  border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btnSave:hover { background: #1b5e20; }
+.btnSave:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btnDel {
+  background: #c0392b; color: #fff; border: none;
+  border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btnDel:hover { background: #a93226; }
+.delMsg { font-size: 13px; color: #888; }
