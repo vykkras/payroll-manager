@@ -75,7 +75,7 @@ export default function Home({ store, onOpenProject }) {
   function addColumn() {
     const v = colInput.trim()
     if (!v) return
-    setColumns(cs => [...cs, { id: uid(), name: v, filter: false }])
+    setColumns(cs => [...cs, { id: uid(), name: v, filter: false, sum: false }])
     setColInput('')
   }
   function removeColumn(id) {
@@ -83,6 +83,9 @@ export default function Home({ store, onOpenProject }) {
   }
   function toggleColFilter(id) {
     setColumns(cs => cs.map(c => c.id === id ? { ...c, filter: !c.filter } : c))
+  }
+  function toggleColSum(id) {
+    setColumns(cs => cs.map(c => c.id === id ? { ...c, sum: !c.sum } : c))
   }
 
   // ── Item helpers ──────────────────────────────────────────────────────────
@@ -287,9 +290,12 @@ export default function Home({ store, onOpenProject }) {
                         className={`${s.filterToggleBtn} ${c.filter ? s.filterToggleBtnOn : ''}`}
                         onClick={() => toggleColFilter(c.id)}
                         title="Toggle filter on/off for this column"
-                      >
-                        {c.filter ? '⧩ Filter ON' : '⧩ Filter'}
-                      </button>
+                      >{c.filter ? '⧩ Filter ON' : '⧩ Filter'}</button>
+                      <button
+                        className={`${s.filterToggleBtn} ${c.sum ? s.filterToggleBtnOn : ''}`}
+                        onClick={() => toggleColSum(c.id)}
+                        title="Toggle sum on/off for this column"
+                      >{c.sum ? '∑ Sum ON' : '∑ Sum'}</button>
                       <button className={s.colListDel} onClick={() => removeColumn(c.id)}>✕</button>
                     </div>
                   ))}

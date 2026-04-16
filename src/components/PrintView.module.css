@@ -80,6 +80,7 @@
 .table tbody td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; }
 .table tbody tr:last-child td { border-bottom: none; }
 .rowAlt td { background: #f8f8f8; }
+.sumCell { font-weight: 800; font-variant-numeric: tabular-nums; border-top: 2px solid #1a1a2e; background: #f0f4ff; padding: 5px 8px; }
 
 .colCode   { width: 60px; }
 .colCenter { text-align: center !important; width: 48px; }

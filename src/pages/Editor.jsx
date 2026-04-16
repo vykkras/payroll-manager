@@ -104,6 +104,7 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
   const totals = useMemo(() => {
     const t = {}
     columns.forEach(col => {
+      if (!col.sum) return
       const nonempty = filteredRows.filter(r => r[col.id] !== '' && r[col.id] != null)
       if (nonempty.length === 0) return
       const nums = nonempty.map(r => parseFloat(r[col.id]))

@@ -41,8 +41,8 @@ export default function PrintView({ project, folder, position, payroll, onClose 
   // Also set document.title so the browser uses it as the PDF filename
   useEffect(() => {
     const prevTitle = document.title
-    const dateStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).replace(/\//g, '-')
-    document.title = `${crewName}---${project.name}---${dateStr}`
+    const safePeriod = (period || '').replace(/[/\\:*?"<>|]/g, '-').trim() || 'no-period'
+    document.title = `${crewName}---${project.name}---${safePeriod}`
     document.body.classList.add('print-active')
     return () => {
       document.title = prevTitle
@@ -143,22 +143,40 @@ export default function PrintView({ project, folder, position, payroll, onClose 
 
           {rows.length === 0 ? (
             <p className={s.noData}>No production data entered for this position.</p>
-          ) : (
-            <table className={s.table}>
-              <thead>
-                <tr>
-                  {columns.map(c => <th key={c.id}>{c.name}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={row.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
-                    {columns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          ) : (() => {
+            const sumCols = {}
+            columns.forEach(col => {
+              if (!col.sum) return
+              const nums = rows.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
+              if (nums.length > 0) sumCols[col.id] = nums.reduce((a, b) => a + b, 0)
+            })
+            const hasSums = Object.keys(sumCols).length > 0
+            return (
+              <table className={s.table}>
+                <thead>
+                  <tr>{columns.map(c => <th key={c.id}>{c.name}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={row.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
+                      {columns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+                {hasSums && (
+                  <tfoot>
+                    <tr>
+                      {columns.map(c => (
+                        <td key={c.id} className={s.sumCell}>
+                          {sumCols[c.id] !== undefined ? Number(sumCols[c.id]).toLocaleString('en-US') : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            )
+          })()}
 
           {/* ── Signature line ── */}
           <div className={s.signatureRow}>

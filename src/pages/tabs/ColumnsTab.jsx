@@ -27,6 +27,10 @@ export default function ColumnsTab({ store, project }) {
     store.updateProjectColumns(project.id, columns.map(c => c.id === id ? { ...c, filter: !c.filter } : c))
   }
 
+  function toggleSum(id) {
+    store.updateProjectColumns(project.id, columns.map(c => c.id === id ? { ...c, sum: !c.sum } : c))
+  }
+
   function handleDelete(id) {
     store.updateProjectColumns(project.id, columns.filter(c => c.id !== id))
     setDelId(null)
@@ -68,9 +72,12 @@ export default function ColumnsTab({ store, project }) {
                 className={`${s.filterBtn} ${col.filter ? s.filterBtnOn : ''}`}
                 onClick={() => toggleFilter(col.id)}
                 title="Toggle filter for this column"
-              >
-                {col.filter ? '⧩ Filter ON' : '⧩ Filter'}
-              </button>
+              >{col.filter ? '⧩ Filter ON' : '⧩ Filter'}</button>
+              <button
+                className={`${s.filterBtn} ${col.sum ? s.filterBtnOn : ''}`}
+                onClick={() => toggleSum(col.id)}
+                title="Toggle sum for this column"
+              >{col.sum ? '∑ Sum ON' : '∑ Sum'}</button>
               <div className={s.rowActions}>
                 <button className={s.editBtn} onClick={() => { setEditCol(col); setEditName(col.name) }}>✏ Rename</button>
                 <button className={s.delBtn} onClick={() => setDelId(col.id)}>✕</button>
