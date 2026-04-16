@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC Cable — Production Reports</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; height: 100vh; overflow: hidden; }
+
+/* ── Header ── */
+header {
+  background: #1a1a2e; color: #fff;
+  padding: 0 20px; height: 52px;
+  display: flex; align-items: center; gap: 16px;
+  position: relative; z-index: 300;
+}
+header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; white-space: nowrap; }
+#back-btn { font-size: 12px; color: rgba(255,255,255,0.5); text-decoration: none; white-space: nowrap; padding: 4px 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.15); }
+#back-btn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+#breadcrumb { font-size: 13px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 2px; flex: 1; }
+#header-file { font-size: 11px; color: rgba(255,255,255,0.35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#change-file-btn {
+  font-size: 11px; color: rgba(255,255,255,0.6); cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.2); background: none;
+  padding: 4px 12px; border-radius: 5px; white-space: nowrap;
+}
+#change-file-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
+/* ── Upload overlay ── */
+#upload-overlay {
+  position: fixed; inset: 52px 0 0 0; background: #f0f2f5;
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+#upload-zone {
+  border: 2px dashed #c5cae9; background: #fff; border-radius: 16px;
+  padding: 60px 80px; text-align: center; cursor: pointer; transition: all 0.2s;
+  max-width: 460px; width: 100%;
+}
+#upload-zone:hover, #upload-zone.drag-over { border-color: #3949ab; background: #e8eaf6; }
+#upload-zone .icon { font-size: 44px; margin-bottom: 14px; display: block; }
+#upload-zone h2 { font-size: 16px; font-weight: 600; color: #3949ab; margin-bottom: 6px; }
+#upload-zone p { font-size: 13px; color: #999; }
+.fmt-tags { margin-top: 14px; display: flex; gap: 6px; justify-content: center; }
+.fmt-tag { background: #e8eaf6; color: #3949ab; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+#file-input { display: none; }
+
+/* ── Filter bar ── */
+#filter-bar {
+  display: none; align-items: center; gap: 12px;
+  background: #fff; border-bottom: 1px solid #e0e0e0;
+  padding: 10px 20px; height: 50px;
+}
+#filter-bar.visible { display: flex; }
+.filter-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+.filter-select {
+  border: 1px solid #e0e0e0; border-radius: 7px; padding: 6px 28px 6px 10px;
+  font-size: 13px; color: #333; background: #fafafa; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+.filter-select:focus { outline: none; border-color: #3949ab; }
+.filter-divider { width: 1px; height: 20px; background: #e8e8e8; margin: 0 4px; }
+#record-count { font-size: 12px; color: #aaa; margin-left: auto; }
+
+/* ── Main split layout ── */
+#app {
+  display: none;
+  height: calc(100vh - 102px); /* header + filter bar */
+}
+#app.visible { display: grid; grid-template-columns: 1fr 1fr; }
+
+/* ── Left: Summary ── */
+#left-panel {
+  border-right: 1px solid #e0e0e0;
+  overflow: hidden; background: #f8f9fb;
+  display: flex; flex-direction: column;
+}
+.panel-header {
+  padding: 14px 20px 10px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: #f8f9fb; z-index: 10;
+  border-bottom: 1px solid #ececec;
+}
+.panel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #888; }
+.panel-hint { font-size: 11px; color: #bbb; }
+
+/* Summary table */
+#summary-wrap { padding: 16px 20px; flex: 1; overflow-y: auto; min-height: 0; }
+#summary-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e0e0e0; }
+#summary-table thead th {
+  background: #1a1a2e; color: rgba(255,255,255,0.7);
+  padding: 9px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+#summary-table thead th.r { text-align: right; }
+#summary-table tbody td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #333; }
+#summary-table tbody tr:last-child td { border-bottom: none; }
+#summary-table tbody tr:hover td { background: #fafbff; }
+#summary-table td.item-name { font-weight: 500; color: #444; }
+#summary-table td.item-unit { font-size: 11px; color: #bbb; }
+#summary-table td.item-total {
+  text-align: right; font-weight: 700; color: #1a1a2e;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+#summary-table td.item-total:hover { color: #3949ab; text-decoration: underline; text-decoration-style: dotted; }
+#summary-table td.item-total.zero { color: #ddd; font-weight: 400; cursor: default; }
+#summary-table td.item-total.zero:hover { color: #ddd; text-decoration: none; }
+
+/* ── Right: Payment ── */
+#right-panel { overflow-y: auto; background: #fff; display: flex; flex-direction: column; }
+
+/* Position tabs */
+.pos-tabs { display: flex; border-bottom: 1px solid #ececec; }
+.pos-tab {
+  flex: 1; padding: 13px 8px; text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #aaa; border-bottom: 3px solid transparent;
+  transition: all 0.15s; user-select: none; background: none; border-top: none; border-left: none; border-right: none;
+}
+.pos-tab:hover { color: #3949ab; background: #f8f9fb; }
+.pos-tab.active { color: #3949ab; border-bottom-color: #3949ab; }
+.pos-tab .sub { font-size: 10px; font-weight: 400; display: block; opacity: 0.7; margin-top: 1px; }
+
+/* Payment meta */
+.pay-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
+.meta-field label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+.meta-field input {
+  width: 100%; border: 1px solid #e4e4e4; border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; color: #333; background: #fafafa;
+}
+.meta-field input:focus { outline: none; border-color: #3949ab; }
+
+/* Payment table */
+#pay-wrap { padding: 0 20px; flex: 1; }
+#pay-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#pay-table thead th {
+  padding: 9px 10px; text-align: left;
+  font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px;
+  border-bottom: 2px solid #e8e8e8; white-space: nowrap;
+}
+#pay-table thead th.r { text-align: right; }
+#pay-table tbody td { padding: 10px 10px; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+#pay-table tbody tr:last-child td { border-bottom: none; }
+#pay-table td.code { font-size: 10px; font-weight: 700; color: #aaa; }
+#pay-table td.name { color: #333; }
+#pay-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+#pay-table td.rate { color: #666; }
+#pay-table td.amount { font-weight: 700; color: #1a1a2e; }
+#pay-table td.dim { color: #ccc; font-weight: 400; }
+#pay-table tr.na-row td { opacity: 0.3; }
+.formula-note { font-size: 10px; color: #bbb; margin-left: 4px; }
+.qty-input {
+  width: 90px; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 8px; font-size: 13px; text-align: right; color: #1a1a2e;
+  background: #fafafa; font-variant-numeric: tabular-nums;
+}
+.qty-input:focus { outline: none; border-color: #3949ab; background: #fff; }
+.qty-input:disabled { background: #f5f5f5; color: #ccc; border-color: #f0f0f0; }
+
+/* Payment total + footer */
+.pay-footer {
+  padding: 14px 20px; border-top: 2px solid #1a1a2e;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; bottom: 0; background: #fff;
+}
+.total-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+.total-amount { font-size: 22px; font-weight: 800; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+.btn-download {
+  background: #1a1a2e; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-download:hover { background: #2c2c4a; }
+.btn-save {
+  background: #2e7d32; color: #fff; border: none; border-radius: 8px;
+  padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-save:hover { background: #1b5e20; }
+.btn-divide {
+  background: #f5f5f5; color: #555; border: 1px solid #e0e0e0; border-radius: 7px;
+  padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.12s;
+}
+.btn-divide:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* ── Breakdown drawer ── */
+#breakdown {
+  position: fixed; bottom: -100%; left: 0; right: 0; height: 46vh;
+  background: #fff; border-top: 2px solid #1a1a2e;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
+  transition: bottom 0.28s cubic-bezier(0.4,0,0.2,1);
+  z-index: 400; display: flex; flex-direction: column;
+}
+#breakdown.open { bottom: 0; }
+#breakdown-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+}
+#breakdown-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+#breakdown-subtitle { font-size: 11px; color: #aaa; margin-top: 1px; }
+#breakdown-close {
+  background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; color: #666; cursor: pointer;
+}
+#breakdown-close:hover { background: #f5f5f5; }
+#breakdown-body { flex: 1; overflow-y: auto; }
+#breakdown-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#breakdown-table thead th { background: #f8f9fb; padding: 8px 14px; text-align: left; font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; position: sticky; top: 0; border-bottom: 1px solid #e8e8e8; }
+#breakdown-table thead th.r { text-align: right; }
+#breakdown-table tbody td { padding: 9px 14px; border-bottom: 1px solid #f5f5f5; color: #333; }
+#breakdown-table tbody tr:last-child td { border-bottom: none; }
+#breakdown-table td.r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ── Saved Crews ── */
+#crews-bar {
+  display: none; padding: 10px 20px 12px; border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+.crews-label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+#crew-cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+#crew-cards::-webkit-scrollbar { height: 3px; }
+.crew-card {
+  flex-shrink: 0; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
+  padding: 9px 13px; cursor: pointer; transition: all 0.15s; min-width: 120px;
+  box-shadow: 2px 2px 0 #e8e8e8, 4px 4px 0 #f0f0f0;
+}
+.crew-card:hover { border-color: #3949ab; box-shadow: 2px 2px 0 #c5cae9, 4px 4px 0 #e8eaf6; transform: translateY(-1px); }
+.crew-card-name { font-size: 12px; font-weight: 700; color: #1a1a2e; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.crew-card-row { font-size: 10px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.crew-card-row span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.crew-card .del-crew { display: none; position: absolute; top: 5px; right: 6px; font-size: 10px; color: #ccc; background: none; border: none; cursor: pointer; line-height: 1; }
+.crew-card { position: relative; }
+.crew-card:hover .del-crew { display: block; }
+.crew-card .del-crew:hover { color: #c0392b; }
+
+#save-crew-row { padding: 0 20px 10px; display: flex; justify-content: flex-end; }
+#btn-save-crew {
+  font-size: 12px; font-weight: 600; color: #3949ab; background: #e8eaf6;
+  border: none; border-radius: 7px; padding: 7px 14px; cursor: pointer;
+}
+#btn-save-crew:hover { background: #c5cae9; }
+
+/* ── Calculator ── */
+#calc-wrap { border-top: 1px solid #ececec; flex-shrink: 0; }
+#calc-display {
+  background: #1a1a2e; border-radius: 10px; padding: 10px 14px 8px;
+  margin-bottom: 10px; min-height: 58px; display: flex; flex-direction: column; justify-content: flex-end;
+}
+#calc-expr  { font-size: 11px; color: rgba(255,255,255,0.35); text-align: right; min-height: 16px; word-break: break-all; }
+#calc-result { font-size: 26px; font-weight: 700; color: #fff; text-align: right; font-variant-numeric: tabular-nums; word-break: break-all; }
+#calc-keys  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.ck {
+  border: none; border-radius: 8px; padding: 12px 4px; font-size: 15px; font-weight: 600;
+  cursor: pointer; background: #fff; color: #1a1a2e; border: 1px solid #ebebeb;
+  transition: background 0.1s;
+}
+.ck:hover  { background: #f0f0f0; }
+.ck:active { background: #e0e0e0; }
+.ck.op     { background: #f5f5f5; color: #555; }
+.ck.op:hover { background: #ebebeb; }
+.ck.acc    { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.ck.acc:hover { background: #2c2c4a; }
+.ck.wide   { grid-column: span 2; }
+
+/* ── Mode selector ── */
+#mode-selector { display:flex; flex-direction:column; flex:1; }
+#mode-btns { display:flex; flex-direction:column; gap:12px; padding:24px 20px; flex:1; justify-content:center; }
+.mode-btn {
+  display:flex; align-items:center; gap:14px; padding:18px 20px;
+  background:#fff; border:1.5px solid #e0e0e0; border-radius:12px;
+  cursor:pointer; text-align:left; transition:all 0.15s;
+}
+.mode-btn:hover { border-color:#3949ab; box-shadow:0 2px 12px rgba(57,73,171,0.1); }
+.mode-icon { font-size:28px; flex-shrink:0; }
+.mode-name { font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:3px; }
+.mode-desc { font-size:12px; color:#aaa; }
+
+/* ── Manual grid ── */
+#manual-mode { display:none; flex-direction:column; flex:1; overflow:hidden; }
+#manual-mode.on { display:flex; }
+#file-mode { display:none; flex-direction:column; flex:1; overflow:hidden; min-height:0; }
+#file-mode.on { display:flex; }
+#manual-grid-wrap { flex:1; overflow:auto; padding:12px 20px; }
+.manual-table { width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap; }
+.manual-table th { background:#1a1a2e; color:rgba(255,255,255,0.7); padding:7px 10px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; position:sticky; top:0; }
+.manual-table td { padding:4px 6px; border-bottom:1px solid #f5f5f5; }
+.manual-table tfoot td { font-weight:700; color:#1a1a2e; border-top:2px solid #1a1a2e; padding:6px 10px; font-size:11px; }
+.mcell { width:100%; min-width:70px; border:1px solid transparent; border-radius:4px; padding:4px 6px; font-size:12px; color:#333; background:transparent; }
+.mcell:focus { outline:none; border-color:#3949ab; background:#fff; }
+.mcol-head { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:70px; }
+.mcol-head em { font-style:normal; opacity:0.5; font-size:9px; }
+.mcol-del,.mrow-del { background:none; border:none; color:#ccc; cursor:pointer; font-size:11px; padding:0 2px; flex-shrink:0; }
+.mcol-del:hover,.mrow-del:hover { color:#c0392b; }
+.btn-panel-action { background:none; border:1px solid #e0e0e0; border-radius:6px; padding:4px 10px; font-size:11px; font-weight:600; color:#666; cursor:pointer; }
+.btn-panel-action:hover { border-color:#3949ab; color:#3949ab; }
+#btn-add-row-wrap { padding:8px 20px; border-top:1px solid #f0f0f0; flex-shrink:0; }
+#btn-add-row { width:100%; }
+
+/* ── Editable payroll rows ── */
+.pay-edit-btn { background:none; border:none; color:#ddd; cursor:pointer; font-size:13px; padding:0 4px; }
+.pay-edit-btn:hover { color:#3949ab; }
+.pay-del-btn  { background:none; border:none; color:#ddd; cursor:pointer; font-size:13px; padding:0 4px; }
+.pay-del-btn:hover  { color:#c0392b; }
+tr.editing-row td { background:#f8f9ff; }
+.pay-inline-input { border:1px solid #c5cae9; border-radius:4px; padding:3px 6px; font-size:12px; width:100%; min-width:40px; }
+.pay-inline-input:focus { outline:none; border-color:#3949ab; }
+.pay-save-btn   { background:#3949ab; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; }
+.pay-cancel-btn { background:none; border:1px solid #e0e0e0; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; color:#888; margin-left:4px; }
+#pay-table thead th:first-child { width:28px; }
+#add-item-row td { padding:6px 10px; }
+.btn-add-item { background:none; border:1px dashed #ccc; border-radius:6px; padding:4px 12px; font-size:11px; color:#aaa; cursor:pointer; }
+.btn-add-item:hover { border-color:#3949ab; color:#3949ab; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <a id="back-btn" href="index.html">← Home</a>
+  <div id="breadcrumb">
+    <span id="bc-project"></span>
+    <span id="bc-sep" style="display:none;opacity:.4"> / </span>
+    <span id="bc-folder" style="opacity:.55"></span>
+  </div>
+  <span id="header-file"></span>
+  <button id="change-file-btn" style="display:none">Change file</button>
+</header>
+
+<!-- ═══ UPLOAD ═══ -->
+<div id="upload-overlay" style="display:none">
+  <div id="upload-zone">
+    <span class="icon">📂</span>
+    <h2>Drop your production report</h2>
+    <p>or click to browse files</p>
+    <div class="fmt-tags">
+      <span class="fmt-tag">XLSX</span>
+      <span class="fmt-tag">XLS</span>
+      <span class="fmt-tag">CSV</span>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+  </div>
+</div>
+
+<!-- ═══ FILTER BAR ═══ -->
+<div id="filter-bar">
+  <span class="filter-label" id="filter-label-subsector">Subsector</span>
+  <select class="filter-select" id="f-subsector"><option value="">All</option></select>
+  <div class="filter-divider"></div>
+  <span class="filter-label" id="filter-label-crew">Crew</span>
+  <select class="filter-select" id="f-crew"><option value="">All</option></select>
+  <div class="filter-divider" id="f-date-divider" style="display:none"></div>
+  <span class="filter-label" id="filter-label-date" style="display:none">Date</span>
+  <select class="filter-select" id="f-date" style="display:none"><option value="">All</option></select>
+  <span id="record-count"></span>
+</div>
+
+<!-- ═══ MAIN SPLIT ═══ -->
+<div id="app" class="visible">
+
+  <!-- LEFT panel -->
+  <div id="left-panel">
+
+    <!-- Project selector (shown initially) -->
+    <div id="mode-selector">
+      <div class="panel-header"><span class="panel-title">Select Project</span></div>
+      <div id="mode-btns">
+        <button class="mode-btn" onclick="selectProject('selma')">
+          <span class="mode-icon">🏙️</span>
+          <div><div class="mode-name">Selma, Alabama</div><div class="mode-desc">Upload field report — Excel / CSV</div></div>
+        </button>
+        <button class="mode-btn" onclick="selectProject('georgia')">
+          <span class="mode-icon">🌲</span>
+          <div><div class="mode-name">Georgia Production</div><div class="mode-desc">Upload Georgia production sheet</div></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- File mode (summary — shown after file load) -->
+    <div id="file-mode">
+      <div class="panel-header">
+        <span class="panel-title">Production Summary</span>
+        <span class="panel-hint">Click a total to see breakdown</span>
+      </div>
+      <div id="summary-wrap">
+        <table id="summary-table">
+          <thead><tr><th>Item</th><th>Unit</th><th class="r">Total</th></tr></thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Calculator -->
+    <div id="calc-wrap">
+      <button id="calc-toggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#f8f9fb;border:none;border-top:1px solid #ececec;cursor:pointer;text-align:left">
+        <span class="panel-title">🧮 Calculator</span>
+        <span id="calc-toggle-icon" style="font-size:11px;color:#bbb">▸ show</span>
+      </button>
+      <div id="calc-body" style="display:none;padding:12px 20px 16px">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button id="calc-clear" style="font-size:11px;color:#bbb;background:none;border:none;cursor:pointer;padding:0">Clear</button>
+        </div>
+        <div id="calc-display">
+          <div id="calc-expr"></div>
+          <div id="calc-result">0</div>
+        </div>
+        <div id="calc-keys">
+          <button class="ck op">C</button>
+          <button class="ck op">±</button>
+          <button class="ck op">%</button>
+          <button class="ck op acc">÷</button>
+
+          <button class="ck">7</button>
+          <button class="ck">8</button>
+          <button class="ck">9</button>
+          <button class="ck op acc">×</button>
+
+          <button class="ck">4</button>
+          <button class="ck">5</button>
+          <button class="ck">6</button>
+          <button class="ck op acc">−</button>
+
+          <button class="ck">1</button>
+          <button class="ck">2</button>
+          <button class="ck">3</button>
+          <button class="ck op acc">+</button>
+
+          <button class="ck wide">0</button>
+          <button class="ck">.</button>
+          <button class="ck op acc">=</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Payment Template -->
+  <div id="right-panel">
+    <div class="pos-tabs">
+      <button class="pos-tab active" data-pos="primero">Primero <span class="sub">1st Position</span></button>
+      <button class="pos-tab"        data-pos="segundo">Segundo <span class="sub">2nd Position</span></button>
+      <button class="pos-tab"        data-pos="tercero">Tercero <span class="sub">3rd Position</span></button>
+    </div>
+
+    <!-- Saved crew cards -->
+    <div id="crews-bar">
+      <div class="crews-label">Saved Crews</div>
+      <div id="crew-cards"></div>
+    </div>
+
+    <div class="pay-meta">
+      <div class="meta-field"><label>Project</label><input id="meta-project" type="text" placeholder="Selma, Alabama"></div>
+      <div class="meta-field"><label>Period</label><input id="meta-period" type="text" placeholder="e.g. Mar 1–7, 2026"></div>
+      <div class="meta-field">
+        <label id="meta-crew-label" style="color:#3949ab">▸ Primero — Name</label>
+        <input id="meta-crew-name" type="text" placeholder="Crew member name">
+      </div>
+    </div>
+    <div id="save-crew-row">
+      <button id="btn-save-crew">＋ Save as Crew</button>
+    </div>
+
+    <div id="pay-wrap">
+      <table id="pay-table">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th style="width:90px">Code</th>
+            <th>Description</th>
+            <th class="r" style="width:90px">Qty</th>
+            <th class="r" style="width:70px">Rate</th>
+            <th class="r" style="width:90px">Amount</th>
+            <th style="width:24px"></th>
+          </tr>
+        </thead>
+        <tbody id="pay-tbody"></tbody>
+        <tfoot><tr id="add-item-row"><td colspan="7"><button class="btn-add-item" onclick="addPayrollItem()">+ Add Item</button></td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="pay-footer">
+      <div>
+        <div class="total-label">Total Payment</div>
+        <div class="total-amount" id="pay-total">$0.00</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:4px;align-items:center">
+          <span style="font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap">÷ Qty</span>
+          <button class="btn-divide" onclick="divideAllQtys(2)">÷2</button>
+          <button class="btn-divide" onclick="divideAllQtys(3)">÷3</button>
+          <button class="btn-divide" onclick="divideAllQtys(4)">÷4</button>
+          <button class="btn-divide" onclick="resetQtys()" style="color:#c0392b;border-color:#f5c6cb">↺</button>
+        </div>
+        <button class="btn-save" id="btn-save" style="display:none">💾 Save Payroll</button>
+        <button class="btn-download" id="btn-download">⬇ Download PDF</button>
+      </div>
+    </div>
+    <!-- Save toast -->
+    <div id="save-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.2)">
+      ✓ Payroll saved to week folder
+      &nbsp;&nbsp;<a id="toast-back" href="#" style="color:#7986cb;text-decoration:none;font-weight:700">← Back to week</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BREAKDOWN DRAWER ═══ -->
+<div id="breakdown">
+  <div id="breakdown-header">
+    <div>
+      <div id="breakdown-title">Breakdown</div>
+      <div id="breakdown-subtitle"></div>
+    </div>
+    <button id="breakdown-close">Close ✕</button>
+  </div>
+  <div id="breakdown-body">
+    <table id="breakdown-table">
+      <thead><tr id="breakdown-thead-row"></tr></thead>
+      <tbody id="breakdown-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ─── SUPABASE ────────────────────────────────────────────────────────────────
+const SB = supabase.createClient(
+  'https://pmcllnbkzoztwpsxdbgf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtY2xsbmJrem96dHdwc3hkYmdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzA2OTIsImV4cCI6MjA5MTI0NjY5Mn0.NOt__NLICA5Bf9HYruBGQ8mJLq-YFAOHo_2r7RJQl5U'
+);
+async function syncToCloud(d) {
+  try {
+    await SB.from('app_state').upsert({ id: 'dccable_v2', data: d, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('Supabase sync failed:', e); }
+}
+
+// ─── SAVED CREWS (wired at end of script) ────────────────────────────────────
+const CREWS_KEY = 'dccable_crews';
+let savedCrews = [];
+
+// ─── CALCULATOR ──────────────────────────────────────────────────────────────
+(function () {
+  let expr = '', result = '0', justEvaled = false;
+
+  const exprEl   = document.getElementById('calc-expr');
+  const resultEl = document.getElementById('calc-result');
+
+  function display() {
+    exprEl.textContent   = expr;
+    resultEl.textContent = result;
+  }
+
+  function fmt(n) {
+    if (!isFinite(n)) return 'Error';
+    const s = parseFloat(n.toPrecision(12)).toString();
+    return s;
+  }
+
+  document.getElementById('calc-keys').addEventListener('click', e => {
+    const btn = e.target.closest('.ck');
+    if (!btn) return;
+    const v = btn.textContent.trim();
+
+    if (v === 'C') {
+      expr = ''; result = '0'; justEvaled = false;
+
+    } else if (v === '±') {
+      if (result !== '0') {
+        result = fmt(parseFloat(result) * -1);
+        if (justEvaled) expr = result;
+      }
+
+    } else if (v === '%') {
+      if (result !== '0') {
+        result = fmt(parseFloat(result) / 100);
+        if (justEvaled) expr = result;
+      }
+
+    } else if (v === '=') {
+      if (!expr) return;
+      try {
+        const raw = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+        const val = Function('"use strict"; return (' + raw + ')')();
+        result = fmt(val);
+        expr   = expr + ' =';
+        justEvaled = true;
+      } catch { result = 'Error'; }
+
+    } else if (['+', '−', '×', '÷'].includes(v)) {
+      if (justEvaled) { expr = result + ' ' + v + ' '; justEvaled = false; }
+      else            { expr = expr.trimEnd().replace(/[+−×÷]$/, '').trimEnd() + ' ' + v + ' '; }
+      result = expr.split(/[+−×÷]/).pop().trim() || result;
+
+    } else {
+      // digit or dot
+      if (justEvaled) { expr = v; result = v; justEvaled = false; }
+      else {
+        // if last char is a digit/dot, append; otherwise start new number
+        const tail = expr.trimEnd();
+        if (/[+−×÷]$/.test(tail) || tail === '') {
+          expr += v; result = v;
+        } else {
+          expr += v;
+          const parts = expr.split(/[+−×÷]/);
+          result = parts[parts.length - 1].trim() || result;
+        }
+      }
+    }
+    display();
+  });
+
+  document.getElementById('calc-clear').addEventListener('click', () => {
+    expr = ''; result = '0'; justEvaled = false; display();
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    const map = { '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+      '.':'.', '+':'+', '-':'−', '*':'×', '/':'÷', 'Enter':'=', 'Escape':'C', 'Backspace':'back' };
+    const k = map[e.key];
+    if (!k) return;
+    if (document.activeElement?.tagName === 'INPUT') return; // don't capture when typing in fields
+    e.preventDefault();
+    if (k === 'back') {
+      if (justEvaled) { expr = ''; result = '0'; justEvaled = false; }
+      else { expr = expr.slice(0, -1); const parts = expr.split(/[+−×÷]/); result = parts[parts.length-1].trim() || '0'; }
+      display(); return;
+    }
+    const btn = [...document.querySelectorAll('.ck')].find(b => b.textContent.trim() === k);
+    btn?.click();
+  });
+})();
+
+document.getElementById('calc-toggle').addEventListener('click', () => {
+  const body = document.getElementById('calc-body');
+  const icon = document.getElementById('calc-toggle-icon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  icon.textContent   = open ? '▸ show' : '▾ hide';
+});
+
+// ─── DATA DEFINITIONS ────────────────────────────────────────────────────────
+
+// Items in display order — divBy2 = true means qty ÷ 2 in payment template
+const ITEMS = [
+  { key: 'strand',       label: 'Strand',              unit: 'ft',  csvCol: 'strandLength',        divBy2: false },
+  { key: 'fiber',        label: 'Fiber',               unit: 'ft',  csvCol: 'cableLengthADSS',     divBy2: false },
+  { key: 'tree_trim',    label: 'Tree Trim',           unit: 'ft',  csvCol: 'treeTrimLength',       divBy2: false },
+  { key: 'snowshoe',     label: 'Snowshoe',            unit: 'ea',  csvCol: 'numSnowshoes',         divBy2: true  },
+  { key: 'mr_simple',    label: 'Make Ready (100)',     unit: 'ea',  csvCol: 'simpleMakeready',      divBy2: true  },
+  { key: 'mr_complex',   label: 'Make Ready (350-2000)',unit: 'ea',  csvCol: 'complexMakeready',     divBy2: true  },
+  { key: 'mr_drop',      label: 'Make Ready',          unit: 'ea',  csvCol: 'dropMakeready',        divBy2: true  },
+  { key: 'down_guy',     label: 'Down Guy',            unit: 'ea',  csvCol: 'downGuysInstalled',    divBy2: true  },
+  { key: 'overhead_guy', label: 'Overhead Guy',        unit: 'ea',  csvCol: 'overheadGuyInstalled', divBy2: true  },
+  { key: 'anchor',       label: 'Anchor',              unit: 'ea',  taskType: 'install_anchor',     divBy2: true  },
+  { key: 'riser',        label: 'Riser',               unit: 'ea',  csvCol: 'numRisers',            divBy2: true  },
+];
+
+const RATES = {
+  strand:       { code: 'FP23F',         primero: 0.14, segundo: 0.10, tercero: 0.05 },
+  fiber:        { code: 'FP21F',         primero: 0.14, segundo: 0.10, tercero: 0.05 },
+  tree_trim:    { code: 'FPTT',          primero: 0.40, segundo: 0.30, tercero: 0.05 },
+  snowshoe:     { code: 'FPSS',          primero: 20,   segundo: 20,   tercero: null  },
+  mr_simple:    { code: 'FMMST 100',     primero: 0.12, segundo: 0.08, tercero: null  },
+  mr_complex:   { code: 'FMMST 350-2000',primero: 0.13, segundo: 0.09, tercero: null  },
+  mr_drop:      { code: 'MAKE READY',    primero: 15,   segundo: 15,   tercero: null  },
+  down_guy:     { code: 'FPDG',          primero: 7,    segundo: 7,    tercero: null  },
+  overhead_guy: { code: 'FPOG',          primero: 9,    segundo: 9,    tercero: null  },
+  anchor:       { code: 'FPAN',          primero: 25,   segundo: 25,   tercero: null  },
+  riser:        { code: 'FPRS',          primero: 10,   segundo: 10,   tercero: null  },
+};
+
+// ─── GEORGIA DATA DEFINITIONS ────────────────────────────────────────────────
+const GEORGIA_ITEMS = [
+  { key: 'g_c6m',    label: 'C6M',             unit: 'ft',  csvCol: 'C6M',        divBy2: false },
+  { key: 'g_pm11',   label: 'PM11',            unit: 'ft',  csvCol: 'PM11',       divBy2: true  },
+  { key: 'g_pfi3',   label: 'PFI-3 (PE13)',    unit: 'ea',  csvCol: 'PFI-3',      divBy2: true  },
+  { key: 'g_pm2a',   label: 'PM2A',            unit: 'ft',  csvCol: 'PM2A',       divBy2: true  },
+  { key: 'g_mrc',    label: 'Make Ready C',    unit: 'ea',  csvCol: 'MR-C',       divBy2: true  },
+  { key: 'g_mrs',    label: 'Make Ready S',    unit: 'ea',                        divBy2: true  },
+  { key: 'g_rcd',    label: 'RCD',             unit: 'ea',                        divBy2: true  },
+  { key: 'g_pf33',   label: 'PF33 Anchor',     unit: 'ea',  csvCol: 'PF33 ANCHOR',divBy2: true  },
+  { key: 'g_pf33a',  label: 'PF33 Aux',        unit: 'ea',  csvCol: 'PF33 AUX',   divBy2: true  },
+  { key: 'g_f24',    label: 'Fibra 24',        unit: 'ft',  csvCol: 'FIBRA 24',   divBy2: false },
+  { key: 'g_f48',    label: 'Fibra 48',        unit: 'ft',  csvCol: 'FIBRA 48',   divBy2: false },
+  { key: 'g_f96',    label: 'Fibra 96',        unit: 'ft',  csvCol: 'FIBRA 96',   divBy2: false },
+  { key: 'g_f144',   label: 'Fibra 144',       unit: 'ft',  csvCol: 'FIBRA 144',  divBy2: false },
+  { key: 'g_f288',   label: 'Fibra 288',       unit: 'ft',  csvCol: 'FIBRA 288',  divBy2: false },
+  { key: 'g_mrde',   label: 'MR-DE',           unit: 'ea',                        divBy2: true  },
+  { key: 'g_extra',  label: 'Emergency EACA',  unit: 'ea',  csvCol: 'EXTRA',      divBy2: true  },
+  { key: 'g_bm80t',  label: 'Riser (BM80T)',   unit: 'ea',  csvCol: 'BM80T',      divBy2: true  },
+  { key: 'g_pmsl',   label: 'PMSL',            unit: 'ea',  csvCol: 'PMSL',       divBy2: true  },
+  { key: 'g_ovlsh',  label: 'Overlash',        unit: 'ft',  csvCol: 'OVERLASH',   divBy2: false },
+];
+
+const GEORGIA_RATES = {
+  g_c6m:   { code: 'C6M',            primero: 0.13, segundo: 0.09, tercero: 0.05  },
+  g_pm11:  { code: 'PM11',           primero: 1.01, segundo: 1.01, tercero: null  },
+  g_pfi3:  { code: 'PE13',           primero: 2.07, segundo: 2.07, tercero: null  },
+  g_pm2a:  { code: 'PM2A',           primero: 1.35, segundo: 1.35, tercero: null  },
+  g_mrc:   { code: 'MRC',            primero: 25,   segundo: 25,   tercero: null  },
+  g_mrs:   { code: 'MRS',            primero: 25,   segundo: 25,   tercero: null  },
+  g_rcd:   { code: 'RCD',            primero: 9,    segundo: 9,    tercero: null  },
+  g_pf33:  { code: 'PF33',           primero: 40,   segundo: 40,   tercero: null  },
+  g_pf33a: { code: 'PF33AUX',        primero: 1.68, segundo: 1.68, tercero: null  },
+  g_f24:   { code: 'CO24',           primero: 0.13, segundo: 0.09, tercero: 0.05  },
+  g_f48:   { code: 'CO48',           primero: 0.13, segundo: 0.09, tercero: 0.05  },
+  g_f96:   { code: 'CO96',           primero: 0.13, segundo: 0.09, tercero: 0.05  },
+  g_f144:  { code: 'CO144',          primero: 0.13, segundo: null, tercero: 0.05  },
+  g_f288:  { code: 'CO288',          primero: 0.13, segundo: null, tercero: null  },
+  g_mrde:  { code: 'MR-DE',          primero: 25,   segundo: 25,   tercero: null  },
+  g_extra: { code: 'EACA',           primero: 40,   segundo: 25,   tercero: null  },
+  g_bm80t: { code: 'RISER',          primero: 1.35, segundo: 1.35, tercero: null  },
+  g_pmsl:  { code: 'PMSL',           primero: 10,   segundo: 10,   tercero: null  },
+  g_ovlsh: { code: 'OVERLASH',       primero: 0.10, segundo: 0.07, tercero: null  },
+};
+
+// ─── PROJECT CONFIGS ─────────────────────────────────────────────────────────
+const PROJECTS = {
+  selma: {
+    name:          'Selma, Alabama',
+    items:         ITEMS,
+    rates:         RATES,
+    filterLabels:  { subsector: 'Subsector', crew: 'Crew' },
+    filterCols:    { subsector: 'subsector', crew: 'last editing user' },
+    rowFilter:     r => r['taskId'] || r['taskType'],
+    sheetName:     null,
+    dateCol:       'completed date',
+    addressCol:    'street address',
+    crewDataCol:   'last editing user',
+    dateFilterCol: null,
+  },
+  georgia: {
+    name:          'Georgia Production',
+    items:         GEORGIA_ITEMS,
+    rates:         GEORGIA_RATES,
+    filterLabels:  { subsector: 'Feeder', crew: 'Names' },
+    filterCols:    { subsector: 'FEEDER', crew: 'NOMBRES' },
+    rowFilter:     r => r['INVOICED'] === true || String(r['INVOICED']).toUpperCase() === 'TRUE',
+    sheetName:     'GEORGIA PRODUCCIÓN',
+    dateCol:       'FECHA DE CIERRE DE SEMANA',
+    addressCol:    'MAPS',
+    crewDataCol:   'NOMBRES',
+    dateFilterCol: 'FECHA DE CIERRE DE SEMANA',
+  },
+};
+
+// ─── ACTIVE ITEMS (mutable rate card) ────────────────────────────────────────
+// Initialized by initProject(); defaults to Selma on page load
+let activeItems = [];
+
+function uidItem() { return 'i_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let allRows = [], headers = [];
+let filterSubsector = '', filterCrew = '', filterDate = '';
+let currentPos = 'primero';
+let payQtys = {};
+let crewNames = { primero: '', segundo: '', tercero: '' };
+let editingRowKey = null;
+let editingDiscountId = null;
+let activeProject = null;
+let baseQtys = {}; // original quantities from file; divide buttons always divide these
+let discounts = [{ id: 'd_hotel', label: 'Discount (Hotel)', amount: 137 }];
+
+// ─── PROJECT SELECTOR ────────────────────────────────────────────────────────
+function initProject(id) {
+  activeProject = PROJECTS[id];
+  activeItems = activeProject.items.map(item => ({
+    ...item,
+    code:    activeProject.rates[item.key].code,
+    primero: activeProject.rates[item.key].primero,
+    segundo: activeProject.rates[item.key].segundo,
+    tercero: activeProject.rates[item.key].tercero,
+  }));
+  payQtys = {};
+}
+
+function selectProject(id) {
+  initProject(id);
+  document.getElementById('mode-selector').style.display  = 'none';
+  document.getElementById('file-mode').classList.add('on');
+  document.getElementById('calc-wrap').style.display = '';
+  document.getElementById('upload-overlay').style.display = '';
+  document.getElementById('filter-label-subsector').textContent = activeProject.filterLabels.subsector;
+  document.getElementById('filter-label-crew').textContent = activeProject.filterLabels.crew;
+  renderPayment();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+
+function escG(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function parseNum(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const s = String(v).trim();
+  if (/^(yes|true)$/i.test(s)) return 1;
+  if (/^(no|false|n\/a|na|please select|-)$/i.test(s)) return 0;
+  const n = parseFloat(s.replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtNum(n, unit) {
+  if (n === 0) return '—';
+  return Math.round(n).toLocaleString() + (unit ? ' ' + unit : '');
+}
+function fmtMoney(n) {
+  if (n === 0) return '—';
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtRate(r) {
+  if (r === null) return 'N/A';
+  return r < 1 ? '$' + r.toFixed(2) : '$' + r.toFixed(0);
+}
+function taskLabel(s) { return s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : s; }
+function parseDate(v) { const m = String(v||'').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; }
+
+// Converts Excel serial numbers or date strings to a consistent display string for the date filter
+function fmtDateVal(v) {
+  if (v === null || v === undefined || v === '') return '';
+  // Excel serial date number
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const s = String(v).trim();
+  if (!s) return '';
+  // Try parsing as a date string
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return s; // fallback: use as-is
+}
+
+// ─── COMPUTED QUANTITIES ──────────────────────────────────────────────────────
+
+function getFilteredRows() {
+  const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
+  const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+  const dateFilterCol = activeProject?.dateFilterCol;
+  return allRows.filter(r => {
+    if (filterSubsector && String(r[subsectorCol]||'').trim() !== filterSubsector) return false;
+    if (filterCrew      && String(r[crewCol]||'').trim()      !== filterCrew)      return false;
+    if (filterDate && dateFilterCol && fmtDateVal(r[dateFilterCol]) !== filterDate) return false;
+    return true;
+  });
+}
+
+function calcQty(item, rows) {
+  if (item.taskType) {
+    return rows.filter(r => String(r['taskType']||'').trim() === item.taskType).length;
+  }
+  if (!headers.includes(item.csvCol)) return 0;
+  let s = 0; rows.forEach(r => { s += parseNum(r[item.csvCol]); }); return Math.round(s);
+}
+
+// ─── FILE LOADING ─────────────────────────────────────────────────────────────
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb  = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      // Use project-specific sheet name if available, otherwise first sheet
+      const sheetName = (activeProject?.sheetName && wb.Sheets[activeProject.sheetName])
+        ? activeProject.sheetName
+        : wb.SheetNames[0];
+      const ws  = wb.Sheets[sheetName];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (raw.length < 2) { alert('File appears empty.'); return; }
+
+      headers = raw[0].map(h => String(h).trim());
+      const rowFilter = activeProject?.rowFilter || (r => r['taskId'] || r['taskType']);
+      allRows = raw.slice(1)
+        .map(row => { const o = {}; headers.forEach((h,i) => { o[h]=row[i]??''; }); return o; })
+        .filter(rowFilter);
+
+      filterSubsector = ''; filterCrew = ''; filterDate = '';
+
+      // Date filter — primary, always from all rows
+      const dateFilterCol = activeProject?.dateFilterCol;
+      const showDate = !!dateFilterCol;
+      document.getElementById('f-date-divider').style.display    = showDate ? '' : 'none';
+      document.getElementById('filter-label-date').style.display = showDate ? '' : 'none';
+      document.getElementById('f-date').style.display            = showDate ? '' : 'none';
+      if (showDate) {
+        const dates = [...new Set(allRows.map(r => fmtDateVal(r[dateFilterCol])).filter(Boolean))].sort();
+        populateSelect('f-date', dates);
+      }
+
+      // Subsector + crew dropdowns (cascade from date)
+      updateFilterDropdowns();
+
+      // Filter labels
+      if (activeProject) {
+        document.getElementById('filter-label-subsector').textContent = activeProject.filterLabels.subsector;
+        document.getElementById('filter-label-crew').textContent      = activeProject.filterLabels.crew;
+      }
+
+      document.getElementById('header-file').textContent = file.name;
+      document.getElementById('change-file-btn').style.display = '';
+      document.getElementById('upload-overlay').style.display = 'none';
+      document.getElementById('filter-bar').classList.add('visible');
+      document.getElementById('app').classList.add('visible');
+      document.getElementById('file-mode').classList.add('on');
+      document.getElementById('calc-wrap').style.display = '';
+
+      renderAll();
+    } catch(err) { alert('Could not read file.\n' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateSelect(id, values, selected = '') {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">All (${values.length})</option>` +
+    values.map(v => `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`).join('');
+}
+
+// Repopulate subsector + crew dropdowns based on current date (and subsector) filter.
+// Called on file load and whenever date or subsector changes.
+function updateFilterDropdowns() {
+  const dateFilterCol = activeProject?.dateFilterCol;
+  const subsectorCol  = activeProject?.filterCols?.subsector || 'subsector';
+  const crewCol       = activeProject?.filterCols?.crew      || 'last editing user';
+
+  // Pool for subsector = rows matching date only
+  const byDate = (filterDate && dateFilterCol)
+    ? allRows.filter(r => fmtDateVal(r[dateFilterCol]) === filterDate)
+    : allRows;
+
+  // Pool for crew = rows matching date + subsector
+  const byDateSub = filterSubsector
+    ? byDate.filter(r => String(r[subsectorCol]||'').trim() === filterSubsector)
+    : byDate;
+
+  populateSelect('f-subsector',
+    [...new Set(byDate.map(r => String(r[subsectorCol]||'').trim()).filter(Boolean))].sort(),
+    filterSubsector);
+
+  populateSelect('f-crew',
+    [...new Set(byDateSub.map(r => String(r[crewCol]||'').trim()).filter(Boolean))].sort(),
+    filterCrew);
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+
+function renderAll() {
+  const rows = getFilteredRows();
+  document.getElementById('record-count').textContent = `${rows.length.toLocaleString()} records`;
+  // Auto-fill quantities from filtered data; apply divBy2 at load time so payQtys stores payment qty
+  activeItems.forEach(item => {
+    if (item.csvCol || item.taskType) {
+      const raw = calcQty(item, rows);
+      payQtys[item.key] = item.divBy2 ? Math.round(raw / 2) : raw;
+    }
+  });
+  baseQtys = { ...payQtys }; // snapshot for divide/reset
+  renderSummary(rows);
+  renderPayment();
+}
+
+// ─── SUMMARY TABLE ────────────────────────────────────────────────────────────
+
+function renderSummary(rows) {
+  const tbody = document.getElementById('summary-tbody');
+
+  const rowsHtml = activeItems.filter(i => i.csvCol || i.taskType).map(item => {
+    const qty = calcQty(item, rows);
+    const isZero = qty === 0;
+    return `<tr>
+      <td class="item-name">${item.label}</td>
+      <td class="item-unit">${item.unit}</td>
+      <td class="item-total ${isZero ? 'zero' : ''}"
+          data-key="${item.key}"
+          title="${isZero ? '' : 'Click to see breakdown'}">
+        ${isZero ? '—' : Math.round(qty).toLocaleString()}
+      </td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rowsHtml;
+
+  // Bind click on non-zero totals
+  tbody.querySelectorAll('td.item-total:not(.zero)').forEach(td => {
+    td.addEventListener('click', () => openBreakdown(td.dataset.key, rows));
+  });
+}
+
+// ─── PAYMENT TABLE ────────────────────────────────────────────────────────────
+
+function renderPayment() {
+  const tbody = document.getElementById('pay-tbody');
+
+  tbody.innerHTML = activeItems.map(item => {
+    if (item.key === editingRowKey) return renderEditRow(item);
+    const rate   = item[currentPos];
+    const isNA   = rate === null || rate === undefined;
+    const qty    = payQtys[item.key] || 0; // already payment qty (divBy2 applied at load)
+    const amt    = isNA ? 0 : qty * rate;
+    return `<tr>
+      <td><button class="pay-edit-btn" onclick="startEditRow('${item.key}')">✎</button></td>
+      <td class="code">${escG(item.code)}</td>
+      <td class="name">${escG(item.label)}</td>
+      <td style="padding:6px 10px">
+        <input class="qty-input" type="number" min="0" step="1"
+          data-key="${item.key}" value="${qty > 0 ? Math.round(qty) : ''}" placeholder="0"
+          ${isNA ? 'disabled' : ''}>
+        ${item.divBy2 && !isNA ? '<span class="formula-note">÷2</span>' : ''}
+      </td>
+      <td class="r rate">${fmtRate(rate)}</td>
+      <td class="r amount" data-amt="${item.key}" style="${isNA ? 'color:#ccc' : amt===0 ? 'color:#ddd' : ''}">${isNA ? 'N/A' : fmtMoney(amt)}</td>
+      <td><button class="pay-del-btn" onclick="deletePayrollItem('${item.key}')">✕</button></td>
+    </tr>`;
+  }).join('') +
+  discounts.map(d => {
+    if (d.id === editingDiscountId) {
+      return `<tr class="editing-row">
+        <td></td>
+        <td class="code">—</td>
+        <td><input class="pay-inline-input" id="ed-lbl-${d.id}" value="${escG(d.label)}" style="width:160px"></td>
+        <td colspan="2">
+          <span style="font-size:11px;color:#aaa">amount $</span>
+          <input class="pay-inline-input" id="ed-amt-${d.id}" type="number" step="0.01" min="0"
+            value="${d.amount}" style="width:80px" placeholder="0.00">
+        </td>
+        <td>
+          <button class="pay-save-btn" onclick="saveEditDiscount('${d.id}')">✓</button>
+          <button class="pay-cancel-btn" onclick="cancelEditDiscount()">✕</button>
+        </td>
+        <td></td>
+      </tr>`;
+    }
+    const disp = d.amount > 0 ? `-${fmtMoney(d.amount)}` : '—';
+    return `<tr>
+      <td><button class="pay-edit-btn" onclick="startEditDiscount('${d.id}')">✎</button></td>
+      <td class="code">—</td>
+      <td class="name" style="color:#c0392b">${escG(d.label)}</td>
+      <td colspan="2" style="color:#aaa;padding:10px;font-size:12px">fixed</td>
+      <td class="r amount" style="color:#c0392b">${disp}</td>
+      <td><button class="pay-del-btn" onclick="deleteDiscount('${d.id}')">✕</button></td>
+    </tr>`;
+  }).join('') +
+  `<tr><td colspan="7" style="padding:4px 10px 8px">
+    <button class="btn-add-item" onclick="addDiscount()" style="color:#c0392b;border-color:#f5c6cb;border-style:dashed">+ Add Discount</button>
+  </td></tr>`;
+
+  updatePaymentTotals();
+  tbody.querySelectorAll('.qty-input').forEach(input => {
+    input.addEventListener('input', e => {
+      const key = e.target.dataset.key;
+      const val = parseFloat(e.target.value) || 0;
+      payQtys[key] = val;
+      baseQtys[key] = val; // manual edit becomes the new base
+      updatePaymentTotals();
+    });
+  });
+}
+
+function renderEditRow(item) {
+  const rate = item[currentPos];
+  return `<tr class="editing-row">
+    <td></td>
+    <td><input class="pay-inline-input" id="ei-code"  value="${escG(item.code)}"  style="width:80px"></td>
+    <td><input class="pay-inline-input" id="ei-label" value="${escG(item.label)}" style="width:140px"></td>
+    <td colspan="2">
+      <span style="font-size:11px;color:#aaa">${currentPos} rate: </span>
+      <input class="pay-inline-input" id="ei-rate" type="number" step="0.01"
+        value="${rate !== null && rate !== undefined ? rate : ''}" style="width:70px" placeholder="N/A">
+    </td>
+    <td>
+      <button class="pay-save-btn" onclick="saveEditRow('${item.key}')">✓</button>
+      <button class="pay-cancel-btn" onclick="cancelEditRow()">✕</button>
+    </td>
+  </tr>`;
+}
+
+function startEditRow(key) { editingRowKey = key; renderPayment(); }
+function cancelEditRow()   { editingRowKey = null; renderPayment(); }
+
+function saveEditRow(key) {
+  const item  = activeItems.find(i => i.key === key);
+  const code  = document.getElementById('ei-code')?.value.trim();
+  const label = document.getElementById('ei-label')?.value.trim();
+  const rate  = document.getElementById('ei-rate')?.value;
+  if (item) {
+    if (code)  item.code  = code;
+    if (label) item.label = label;
+    item[currentPos] = rate === '' ? null : parseFloat(rate);
+  }
+  editingRowKey = null;
+  renderPayment();
+}
+
+function addPayrollItem() {
+  activeItems.push({
+    key:     uidItem(),
+    label:   'New Item',
+    unit:    'ea',
+    code:    '—',
+    primero: 0,
+    segundo: 0,
+    tercero: null,
+    divBy2:  false,
+  });
+  renderPayment();
+}
+
+function deletePayrollItem(key) {
+  activeItems = activeItems.filter(i => i.key !== key);
+  renderPayment();
+}
+
+function startEditDiscount(id)  { editingDiscountId = id;   renderPayment(); }
+function cancelEditDiscount()   { editingDiscountId = null; renderPayment(); }
+function saveEditDiscount(id) {
+  const d = discounts.find(x => x.id === id);
+  if (d) {
+    const lbl = document.getElementById('ed-lbl-' + id)?.value.trim();
+    const amt = parseFloat(document.getElementById('ed-amt-' + id)?.value);
+    if (lbl) d.label = lbl;
+    if (!isNaN(amt)) d.amount = amt;
+  }
+  editingDiscountId = null;
+  renderPayment();
+}
+function addDiscount() {
+  const id = 'd_' + Date.now().toString(36);
+  discounts.push({ id, label: 'Discount', amount: 0 });
+  editingDiscountId = id;
+  renderPayment();
+}
+function deleteDiscount(id) {
+  discounts = discounts.filter(x => x.id !== id);
+  renderPayment();
+}
+
+function divideAllQtys(n) {
+  activeItems.forEach(item => {
+    if (baseQtys[item.key]) payQtys[item.key] = Math.round(baseQtys[item.key] / n);
+  });
+  renderPayment();
+}
+
+function resetQtys() {
+  payQtys = { ...baseQtys };
+  renderPayment();
+}
+
+function updatePaymentTotals() {
+  let total = 0;
+  discounts.forEach(d => { total -= d.amount; });
+  activeItems.forEach(item => {
+    const rate = item[currentPos];
+    const isNA = rate === null || rate === undefined;
+    const qty  = payQtys[item.key] || 0; // already payment qty
+    const amt  = isNA ? 0 : qty * rate;
+    total += amt;
+    const cell = document.querySelector(`td[data-amt="${item.key}"]`);
+    if (cell) {
+      cell.textContent = isNA ? 'N/A' : fmtMoney(amt);
+      cell.style.color = isNA ? '#ccc' : amt === 0 ? '#ddd' : '';
+    }
+  });
+  document.getElementById('pay-total').textContent = fmtMoney(total);
+}
+
+// ─── BREAKDOWN DRAWER ─────────────────────────────────────────────────────────
+
+function openBreakdown(key, rows) {
+  const item = activeItems.find(i => i.key === key);
+  if (!item) return;
+
+  let detailRows;
+  const dateCol    = activeProject?.dateCol    || 'completed date';
+  const addressCol = activeProject?.addressCol || 'street address';
+  const crewDataCol = activeProject?.crewDataCol || 'last editing user';
+
+  if (item.taskType) {
+    detailRows = rows
+      .filter(r => String(r['taskType']||'').trim() === item.taskType)
+      .map(r => ({
+        date:    parseDate(r[dateCol]),
+        address: String(r[addressCol]||r['assetID']||'').trim(),
+        crew:    String(r[crewDataCol]||'').trim(),
+        qty:     1,
+      }));
+  } else {
+    detailRows = rows
+      .filter(r => parseNum(r[item.csvCol]) > 0)
+      .map(r => ({
+        date:    parseDate(r[dateCol]),
+        address: String(r[addressCol]||r['assetID']||'').trim(),
+        crew:    String(r[crewDataCol]||'').trim(),
+        qty:     parseNum(r[item.csvCol]),
+      }))
+      .sort((a, b) => b.qty - a.qty);
+  }
+
+  const total = detailRows.reduce((s, r) => s + r.qty, 0);
+  const qtyLabel = item.unit === 'ft' ? 'Footage (ft)' : 'Qty';
+
+  document.getElementById('breakdown-title').textContent = `${item.label} — Breakdown`;
+  document.getElementById('breakdown-subtitle').textContent =
+    `${detailRows.length} records · Total: ${Math.round(total).toLocaleString()} ${item.unit}`;
+
+  document.getElementById('breakdown-thead-row').innerHTML = `
+    <th>Date</th><th>Address / Asset</th><th>Crew</th><th class="r">${qtyLabel}</th>`;
+
+  document.getElementById('breakdown-tbody').innerHTML = detailRows.map(r => `<tr>
+    <td>${r.date||'—'}</td>
+    <td>${r.address||'—'}</td>
+    <td style="font-size:11px;color:#888">${r.crew||'—'}</td>
+    <td class="r">${Math.round(r.qty).toLocaleString()}</td>
+  </tr>`).join('');
+
+  document.getElementById('breakdown').classList.add('open');
+}
+
+document.getElementById('breakdown-close').addEventListener('click', () => {
+  document.getElementById('breakdown').classList.remove('open');
+});
+
+// ─── POSITION TABS ────────────────────────────────────────────────────────────
+
+const CREW_LABELS = { primero: '▸ Primero — Name', segundo: '▸ Segundo — Name', tercero: '▸ Tercero — Name' };
+const CREW_COLORS = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' };
+
+function syncCrewName() {
+  crewNames[currentPos] = document.getElementById('meta-crew-name').value;
+}
+
+document.querySelectorAll('.pos-tab').forEach(btn =>
+  btn.addEventListener('click', () => {
+    syncCrewName();
+    currentPos = btn.dataset.pos;
+    document.querySelectorAll('.pos-tab').forEach(b => b.classList.toggle('active', b === btn));
+    const labelEl = document.getElementById('meta-crew-label');
+    labelEl.textContent = CREW_LABELS[currentPos];
+    labelEl.style.color = CREW_COLORS[currentPos];
+    document.getElementById('meta-crew-name').value = crewNames[currentPos];
+    renderPayment();   // re-render to update rate column + recalc
+  })
+);
+
+// ─── FILTER EVENTS ────────────────────────────────────────────────────────────
+
+document.getElementById('f-date').addEventListener('change', e => {
+  filterDate = e.target.value;
+  filterSubsector = ''; filterCrew = ''; // reset downstream
+  updateFilterDropdowns();
+  renderAll();
+});
+document.getElementById('f-subsector').addEventListener('change', e => {
+  filterSubsector = e.target.value;
+  filterCrew = ''; // reset downstream
+  updateFilterDropdowns();
+  renderAll();
+});
+document.getElementById('f-crew').addEventListener('change', e => {
+  filterCrew = e.target.value; renderAll();
+});
+
+// ─── UPLOAD EVENTS ────────────────────────────────────────────────────────────
+
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+
+uploadZone.addEventListener('click',     () => fileInput.click());
+uploadZone.addEventListener('dragover',  e  => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop',      e  => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+document.getElementById('change-file-btn').addEventListener('click', () => {
+  allRows = []; headers = []; fileInput.value = '';
+  filterSubsector = ''; filterCrew = '';
+  // Show upload overlay (project already selected — just re-pick a file)
+  document.getElementById('upload-overlay').style.display = '';
+  document.getElementById('filter-bar').classList.remove('visible');
+  document.getElementById('change-file-btn').style.display = 'none';
+  document.getElementById('header-file').textContent = '';
+  document.getElementById('breakdown').classList.remove('open');
+});
+
+// ─── DOWNLOAD / PRINT ─────────────────────────────────────────────────────────
+
+document.getElementById('btn-download').addEventListener('click', () => {
+  const pos     = { primero: 'Primero (1st)', segundo: 'Segundo (2nd)', tercero: 'Tercero (3rd)' }[currentPos];
+  const project = document.getElementById('meta-project').value || 'Selma, Alabama';
+  const period  = document.getElementById('meta-period').value  || '—';
+  syncCrewName();
+  const crew    = crewNames[currentPos] || '—';
+  const today   = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  // Use current payQtys (which may include manual edits)
+  let total = 0;
+  let tableRows = activeItems.map(item => {
+    const rate = item[currentPos];
+    const isNA = rate === null || rate === undefined;
+    const qty  = payQtys[item.key] || 0; // already payment qty
+    const amt  = isNA ? 0 : qty * rate;
+    total += amt;
+
+    const qtyStr  = isNA || qty === 0 ? '—' : Math.round(qty).toLocaleString() + (item.divBy2 ? ' (÷2)' : '');
+    const rateStr = isNA ? 'N/A' : fmtRate(rate);
+    const amtStr  = isNA ? 'N/A' : (amt === 0 ? '—' : fmtMoney(amt));
+    const dim     = isNA || amt === 0;
+
+    return `<tr class="${dim ? 'dim' : ''}">
+      <td class="code">${escG(item.code)}</td>
+      <td>${escG(item.label)}</td>
+      <td class="r">${qtyStr}</td>
+      <td class="r">${rateStr}</td>
+      <td class="r bold">${amtStr}</td>
+    </tr>`;
+  }).join('');
+
+  discounts.forEach(d => {
+    total -= d.amount;
+    const disp = d.amount > 0 ? `-${fmtMoney(d.amount)}` : '—';
+    tableRows += `<tr class="discount-row">
+      <td class="code">—</td>
+      <td>${escG(d.label)}</td>
+      <td class="r" colspan="2">fixed</td>
+      <td class="r bold" style="color:#c0392b">${disp}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Payment — ${pos}</title>
+<style>
+  @page { margin: 0.9in; size: letter; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #111; }
+  .top { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 14px; border-bottom: 3px solid #1a1a2e; margin-bottom: 18px; }
+  .company { font-size: 20px; font-weight: 800; color: #1a1a2e; }
+  .doc-info { font-size: 12px; color: #888; margin-top: 4px; }
+  .generated { font-size: 11px; color: #aaa; }
+  .meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; background: #f8f9fb; padding: 12px 14px; border-radius: 6px; margin-bottom: 20px; }
+  .meta-item label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #aaa; display: block; margin-bottom: 3px; }
+  .meta-item span { font-size: 13px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1a1a2e; color: rgba(255,255,255,0.75); padding: 9px 11px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  th.r { text-align: right; }
+  td { padding: 10px 11px; border-bottom: 1px solid #eee; }
+  tr.dim td { color: #ccc; }
+  .code { font-size: 10px; font-weight: 700; color: #999; }
+  .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .bold { font-weight: 700; }
+  .discount-row td { color: #c0392b; font-style: italic; }
+  .total-row td { border-top: 2px solid #1a1a2e; border-bottom: none; padding-top: 12px; font-size: 14px; font-weight: 800; }
+  .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #eee; font-size: 10px; color: #bbb; display: flex; justify-content: space-between; }
+</style></head><body>
+<div class="top">
+  <div>
+    <div class="company">DC Cable LLC</div>
+    <div class="doc-info">Payment Report &nbsp;·&nbsp; ${pos}</div>
+  </div>
+  <div class="generated">${today}</div>
+</div>
+<div class="meta">
+  <div class="meta-item"><label>Project</label><span>${project}</span></div>
+  <div class="meta-item"><label>Pay Period</label><span>${period}</span></div>
+  <div class="meta-item"><label>Crew / Employee</label><span>${crew}</span></div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:100px">Code</th>
+    <th>Description</th>
+    <th class="r" style="width:100px">Quantity</th>
+    <th class="r" style="width:80px">Rate</th>
+    <th class="r" style="width:100px">Amount</th>
+  </tr></thead>
+  <tbody>
+    ${tableRows}
+    <tr class="total-row">
+      <td colspan="3"></td>
+      <td class="r">TOTAL</td>
+      <td class="r">${fmtMoney(total)}</td>
+    </tr>
+  </tbody>
+</table>
+<div class="footer">
+  <span>DC Cable LLC — Selma, Alabama</span>
+  <span>Position: ${pos}</span>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+});
+
+// ─── URL CONTEXT + SAVE PAYROLL ──────────────────────────────────────────────
+(async function () {
+  const p       = new URLSearchParams(location.search);
+  const pid     = p.get('pid')     || '';
+  const fid     = p.get('fid')     || '';
+  const wid     = p.get('wid')     || '';
+  const prid    = p.get('prid')    || '';
+  const project = p.get('project') || '';
+  const folder  = p.get('folder')  || '';
+  const week    = p.get('week')    || '';
+
+  // Breadcrumb
+  if (project) {
+    document.getElementById('bc-project').textContent = project;
+    document.getElementById('meta-project').value     = project;
+  }
+  if (folder || week) {
+    document.getElementById('bc-folder').textContent = week ? folder + ' / ' + week : folder;
+    document.getElementById('bc-sep').style.display  = '';
+  }
+
+  // Back button returns to the week view in index.html
+  if (pid && fid && wid) {
+    document.getElementById('back-btn').href = `index.html?pid=${pid}&fid=${fid}&wid=${wid}`;
+  }
+
+  if (!(pid && fid && wid)) return;
+
+  // ── Helper: get app data (localStorage → Supabase fallback) ──
+  async function getAppData() {
+    const KEY = 'dccable_v2';
+    let raw = localStorage.getItem(KEY);
+    if (!raw) {
+      const { data: row } = await SB.from('app_state').select('data').eq('id', KEY).single();
+      if (row?.data) { raw = JSON.stringify(row.data); localStorage.setItem(KEY, raw); }
+    }
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  // ── If editing an existing payroll, pre-load its data ──
+  if (prid) {
+    initProject('selma'); // default project for existing payrolls
+    const appData = await getAppData();
+    if (appData) {
+      const pr = appData.find(x => x.id === pid)
+        ?.folders?.find(x => x.id === fid)
+        ?.weeks?.find(x => x.id === wid)
+        ?.payrolls?.find(x => x.id === prid);
+
+      if (pr) {
+        // Switch to the saved position tab
+        currentPos = pr.position || 'primero';
+        document.querySelectorAll('.pos-tab').forEach(b => b.classList.toggle('active', b.dataset.pos === currentPos));
+        const labelEl = document.getElementById('meta-crew-label');
+        labelEl.textContent = CREW_LABELS[currentPos];
+        labelEl.style.color = CREW_COLORS[currentPos];
+
+        // Restore crew name and period
+        crewNames[currentPos] = pr.crew || '';
+        document.getElementById('meta-crew-name').value = pr.crew || '';
+        if (pr.period) document.getElementById('meta-period').value = pr.period;
+
+        // Restore quantities, discounts, and re-render
+        if (pr.discounts) discounts = pr.discounts;
+        if (pr.qtys) { payQtys = { ...pr.qtys }; renderPayment(); }
+
+        // Skip upload overlay — go straight to the editor
+        document.getElementById('upload-overlay').style.display = 'none';
+        document.getElementById('app').classList.add('visible');
+        document.getElementById('change-file-btn').textContent = 'Load report file';
+        document.getElementById('change-file-btn').style.display = '';
+        document.getElementById('summary-tbody').innerHTML = `
+          <tr><td colspan="3" style="text-align:center;padding:48px 20px;color:#ccc;font-size:13px">
+            Load a report file to see production summary
+          </td></tr>`;
+      }
+    }
+  }
+
+  // ── Save / Update button ──
+  const saveBtn = document.getElementById('btn-save');
+  saveBtn.style.display = '';
+  saveBtn.textContent = prid ? '💾 Update Payroll' : '💾 Save Payroll';
+
+  saveBtn.addEventListener('click', async () => {
+    const KEY = 'dccable_v2';
+    const appData = await getAppData();
+    if (!appData) {
+      alert('No project data found.\nMake sure you opened this editor from a Week folder in the home screen.');
+      return;
+    }
+    const proj   = appData.find(x => x.id === pid);
+    if (!proj)   { alert('Project not found.'); return; }
+    const folObj = proj.folders?.find(x => x.id === fid);
+    if (!folObj) { alert('Folder not found.'); return; }
+    const wkObj  = folObj.weeks?.find(x => x.id === wid);
+    if (!wkObj)  { alert('Week not found.'); return; }
+
+    if (!wkObj.payrolls) wkObj.payrolls = [];
+
+    syncCrewName();
+    const crew      = crewNames[currentPos] || '—';
+    const period    = document.getElementById('meta-period').value.trim() || '—';
+    const totalText = document.getElementById('pay-total').textContent;
+
+    const record = {
+      id:        prid || Date.now().toString(36),
+      position:  currentPos,
+      crew,
+      period,
+      qtys:      { ...payQtys },
+      discounts: discounts.map(d => ({ ...d })),
+      total:     parseFloat(totalText.replace(/[$,]/g, '')) || 0,
+      savedAt:   new Date().toISOString(),
+    };
+
+    if (prid) {
+      const idx = wkObj.payrolls.findIndex(x => x.id === prid);
+      if (idx !== -1) wkObj.payrolls[idx] = record;
+      else wkObj.payrolls.push(record);
+    } else {
+      wkObj.payrolls.push(record);
+    }
+
+    localStorage.setItem(KEY, JSON.stringify(appData));
+    syncToCloud(appData);
+
+    const toast = document.getElementById('save-toast');
+    const toastBack = document.getElementById('toast-back');
+    toastBack.href = `index.html?pid=${pid}&fid=${fid}&wid=${wid}`;
+    toast.style.display = '';
+    setTimeout(() => { toast.style.display = 'none'; }, 5000);
+  });
+}());
+
+// ─── SAVED CREWS ─────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function saveCrewsLocal() {
+  localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews));
+  SB.from('app_state').upsert({ id: CREWS_KEY, data: savedCrews, updated_at: new Date().toISOString() })
+    .then(() => {}).catch(e => console.warn('crew sync:', e));
+}
+
+function renderCrewCards() {
+  const bar  = document.getElementById('crews-bar');
+  const wrap = document.getElementById('crew-cards');
+  if (!savedCrews.length) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  wrap.innerHTML = savedCrews.map(c => `
+    <div class="crew-card" onclick="loadCrew('${c.id}')">
+      <div class="crew-card-name">${esc(c.label)}</div>
+      <div class="crew-card-row"><span style="background:#3949ab"></span>${esc(c.primero||'—')}</div>
+      <div class="crew-card-row"><span style="background:#2e7d32"></span>${esc(c.segundo||'—')}</div>
+      <div class="crew-card-row"><span style="background:#e65100"></span>${esc(c.tercero||'—')}</div>
+      <button class="del-crew" onclick="event.stopPropagation();deleteCrew('${c.id}')">✕</button>
+    </div>`).join('');
+}
+
+function loadCrew(id) {
+  const c = savedCrews.find(x => x.id === id);
+  if (!c) return;
+  crewNames.primero = c.primero || '';
+  crewNames.segundo = c.segundo || '';
+  crewNames.tercero = c.tercero || '';
+  document.getElementById('meta-crew-name').value = crewNames[currentPos] || '';
+}
+
+function deleteCrew(id) {
+  savedCrews = savedCrews.filter(x => x.id !== id);
+  saveCrewsLocal();
+  renderCrewCards();
+}
+
+document.getElementById('btn-save-crew').addEventListener('click', () => {
+  syncCrewName();
+  const label = [crewNames.primero, crewNames.segundo, crewNames.tercero].filter(Boolean).join(' / ') || 'Crew';
+  savedCrews.push({ id: Date.now().toString(36), label, primero: crewNames.primero, segundo: crewNames.segundo, tercero: crewNames.tercero });
+  saveCrewsLocal();
+  renderCrewCards();
+});
+
+// Init: load from localStorage first, then Supabase
+savedCrews = JSON.parse(localStorage.getItem(CREWS_KEY) || '[]');
+renderCrewCards();
+SB.from('app_state').select('data').eq('id', CREWS_KEY).single()
+  .then(({ data: row }) => {
+    if (row?.data) { savedCrews = row.data; localStorage.setItem(CREWS_KEY, JSON.stringify(savedCrews)); renderCrewCards(); }
+  }).catch(() => {});
+</script>
+</body>
+</html>
