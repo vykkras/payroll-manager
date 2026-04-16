@@ -236,33 +236,20 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
   )
 }
 
-// ── Draft helpers ─────────────────────────────────────────────────────────────
-function draftKey(pid, fid) { return `payroll_draft_${pid}_${fid}` }
-function loadDraft(pid, fid) {
-  try { return JSON.parse(localStorage.getItem(draftKey(pid, fid))) || null } catch { return null }
-}
-function saveDraft(pid, fid, payroll) {
-  localStorage.setItem(draftKey(pid, fid), JSON.stringify(payroll))
-}
-function clearDraft(pid, fid) {
-  localStorage.removeItem(draftKey(pid, fid))
-}
-
 // ── Main Editor component ─────────────────────────────────────────────────────
-export default function Editor({ store, project, folder, onBack }) {
-  const [position,   setPosition]   = useState('primero')
-  const [addAll,     setAddAll]     = useState(false)   // all 3
-  const [addTwo,     setAddTwo]     = useState(false)   // primero + segundo only
+export default function Editor({ store, project, folder, editPayroll, onBack }) {
+  const [position,   setPosition]   = useState(editPayroll?.position || 'primero')
+  const [addAll,     setAddAll]     = useState(false)
+  const [addTwo,     setAddTwo]     = useState(false)
   const [savedMsg,   setSavedMsg]   = useState(false)
   const [showClear,  setShowClear]  = useState(false)
   const [showPrint,  setShowPrint]  = useState(false)
-  const [draft,      setDraft]      = useState(() => loadDraft(project.id, folder.id))
+  const [draft,      setDraft]      = useState(editPayroll || null)
 
   const posInfo = POSITIONS.find(p => p.key === position)
 
   function handlePayrollSave(payroll) {
     store.savePayroll(project.id, folder.id, payroll)
-    saveDraft(project.id, folder.id, payroll)
     setDraft(payroll)
     setSavedMsg(true)
     setTimeout(() => setSavedMsg(false), 2200)
