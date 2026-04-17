@@ -249,8 +249,10 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const posInfo = POSITIONS.find(p => p.key === position)
 
   function handlePayrollSave(payroll) {
-    store.savePayroll(project.id, folder.id, payroll)
-    setDraft(payroll)
+    // Snapshot current production rows into the payroll so they're preserved permanently
+    const payrollWithRows = { ...payroll, rows: folder.rows }
+    store.savePayroll(project.id, folder.id, payrollWithRows)
+    setDraft(payrollWithRows)
     setSavedMsg(true)
     setTimeout(() => setSavedMsg(false), 2200)
   }

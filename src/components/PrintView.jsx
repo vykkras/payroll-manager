@@ -30,7 +30,7 @@ export default function PrintView({ project, folder, position, payroll, onClose 
   const total        = payroll?.[`total${posIdx}`] || 0
 
   const columns = project.columns || []
-  const rows    = normalizeRows(folder.rows, position)
+  const rows    = normalizeRows(payroll?.rows ?? folder.rows, position)
 
   const activeItems = (payroll?.items || []).filter(it => {
     const q = it[`qty${posIdx}`]
