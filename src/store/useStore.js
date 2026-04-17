@@ -197,6 +197,18 @@ export function useStore() {
     }))
   }
 
+  function setFolderRows(pid, fid, rows) {
+    const normalized = (!rows || Array.isArray(rows))
+      ? { primero: rows || [], segundo: [], tercero: [] }
+      : { primero: [], segundo: [], tercero: [], ...rows }
+    commit(_data.map(p => {
+      if (p.id !== pid) return p
+      return { ...p, folders: treeUpdate(p.folders || [], fid, f => ({
+        ...f, rows: normalized,
+      }))}
+    }))
+  }
+
   // ── Payrolls ──────────────────────────────────────────────────────────────
 
   function savePayroll(pid, fid, payroll) {
@@ -251,5 +263,6 @@ export function useStore() {
     addFolderRow, updateFolderRow, deleteFolderRow, clearFolderRows,
     savePayroll, deletePayroll,
     saveFolderSummary,
+    setFolderRows,
   }
 }

@@ -13,9 +13,13 @@ export default function App() {
   const goHome    = ()         => setRoute({ page: 'home',    pid: null, fid: null })
   const goProject = pid        => setRoute({ page: 'project', pid,       fid: null })
   const goFolder  = (pid, fid) => setRoute({ page: 'folder',  pid,       fid })
-  const goEditor  = (pid, fid) => setRoute({ page: 'editor',  pid,       fid, editPayroll: null })
+  const goEditor = (pid, fid) => {
+    store.clearFolderRows(pid, fid)
+    setRoute({ page: 'editor', pid, fid, editPayroll: null })
+  }
 
   function goEditorWithPayroll(pid, fid, payroll) {
+    store.setFolderRows(pid, fid, payroll.rows || null)
     setRoute({ page: 'editor', pid, fid, editPayroll: payroll })
   }
 
