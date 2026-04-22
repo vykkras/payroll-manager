@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { uid } from '../store/useStore'
+import { uid, useCrews } from '../store/useStore'
 import s from './PayrollBuilder.module.css'
-
-const CREWS_KEY = 'dccable_crews'
 
 const POSITIONS = [
   { key: 'primero', label: 'Primero', sub: '1st', rateKey: 'rate1', color: '#3949ab' },
@@ -43,13 +41,6 @@ function hydrateItems(configItems, savedItems) {
   })
 }
 
-function loadCrews() {
-  try { return JSON.parse(localStorage.getItem(CREWS_KEY) || '[]') } catch { return [] }
-}
-function saveCrews(crews) {
-  localStorage.setItem(CREWS_KEY, JSON.stringify(crews))
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PayrollBuilder({
   config,
@@ -85,7 +76,7 @@ export default function PayrollBuilder({
     const hotel = () => ({ id: uid(), label: 'Hotel', amount: '137' })
     return { primero: [hotel()], segundo: [hotel()], tercero: [] }
   })
-  const [crews,     setCrews]     = useState(loadCrews)
+  const { crews, saveCrew: storeSaveCrew, deleteCrew: storeDeleteCrew } = useCrews()
   const [fillAll,       setFillAll]       = useState(false)
   const [fillTwo,       setFillTwo]       = useState(false)
   const [div2On,        setDiv2On]        = useState({ primero: false, segundo: false, tercero: false })
@@ -103,15 +94,13 @@ export default function PayrollBuilder({
   // ── Saved crews ──────────────────────────────────────────────────────────────
   function handleSaveCrew() {
     const label = [crewNames.primero, crewNames.segundo, crewNames.tercero].filter(Boolean).join(' / ') || 'Crew'
-    const next = [...crews, { id: uid(), label, primero: crewNames.primero, segundo: crewNames.segundo, tercero: crewNames.tercero }]
-    saveCrews(next); setCrews(next)
+    storeSaveCrew({ id: uid(), label, primero: crewNames.primero, segundo: crewNames.segundo, tercero: crewNames.tercero })
   }
   function loadCrew(c) {
     setCrewNames({ primero: c.primero || '', segundo: c.segundo || '', tercero: c.tercero || '' })
   }
   function deleteCrew(id) {
-    const next = crews.filter(c => c.id !== id)
-    saveCrews(next); setCrews(next)
+    storeDeleteCrew(id)
   }
 
   // ── Item quantity changes ────────────────────────────────────────────────────

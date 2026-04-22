@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const KEY = 'payroll_manager_v2'
 const DEFAULTS_KEY = 'payroll_manager_defaults'
+const CREWS_KEY = 'dccable_crews'
 const SYNC_ROW_ID = 'main'
 
 const supabase = createClient(
@@ -13,18 +14,23 @@ const supabase = createClient(
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]') } catch { return [] }
 }
-function persist(data) {
-  localStorage.setItem(KEY, JSON.stringify(data))
+function persist(data) { localStorage.setItem(KEY, JSON.stringify(data)) }
+
+function loadCrewsLocal() {
+  try { return JSON.parse(localStorage.getItem(CREWS_KEY) || '[]') } catch { return [] }
 }
+function persistCrews(crews) { localStorage.setItem(CREWS_KEY, JSON.stringify(crews)) }
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
 
 let syncTimer = null
-function scheduleSync(data) {
+function scheduleSync() {
   clearTimeout(syncTimer)
   syncTimer = setTimeout(async () => {
     try {
       await supabase.from('payroll_manager_state').upsert({
         id: SYNC_ROW_ID,
-        data,
+        data: { projects: _data, crews: _crews },
         updated_at: new Date().toISOString(),
       })
     } catch (e) {
@@ -32,6 +38,8 @@ function scheduleSync(data) {
     }
   }, 1500)
 }
+
+// ── Exports ───────────────────────────────────────────────────────────────────
 
 export function loadProjectDefaults() {
   try { return JSON.parse(localStorage.getItem(DEFAULTS_KEY) || 'null') } catch { return null }
@@ -94,16 +102,19 @@ function treeUpdate(folders, fid, fn) {
   })
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Module state ──────────────────────────────────────────────────────────────
 
 let _data = load()
 let _listeners = []
+let _crews = loadCrewsLocal()
+let _crewListeners = []
 
 export function getData() { return _data }
 
 function notify() { _listeners.forEach(fn => fn([..._data])) }
+function notifyCrews() { _crewListeners.forEach(fn => fn([..._crews])) }
 
-// On module load: pull from Supabase and overwrite local if remote has data
+// On module load: pull from Supabase; handles both old (array) and new ({ projects, crews }) format
 ;(async () => {
   try {
     const { data: row } = await supabase
@@ -111,17 +122,33 @@ function notify() { _listeners.forEach(fn => fn([..._data])) }
       .select('data')
       .eq('id', SYNC_ROW_ID)
       .single()
-    if (row?.data && Array.isArray(row.data) && row.data.length > 0) {
-      _data = row.data
-      persist(_data)
-      notify()
-    } else if (_data.length > 0) {
-      scheduleSync(_data)
+
+    if (row?.data) {
+      const remote = row.data
+      const projects = Array.isArray(remote) ? remote : (remote.projects || [])
+      const crews    = Array.isArray(remote) ? []      : (remote.crews    || [])
+
+      if (projects.length > 0 || crews.length > 0) {
+        _data  = projects
+        _crews = crews
+        persist(_data)
+        persistCrews(_crews)
+        notify()
+        notifyCrews()
+      } else {
+        // Table row exists but is empty — push local up
+        scheduleSync()
+      }
+    } else {
+      // No row at all — push local up if we have anything
+      if (_data.length > 0 || _crews.length > 0) scheduleSync()
     }
   } catch (e) {
     console.warn('Supabase initial load failed', e)
   }
 })()
+
+// ── Projects store ────────────────────────────────────────────────────────────
 
 export function useStore() {
   const [data, setData] = useState(_data)
@@ -135,14 +162,10 @@ export function useStore() {
     _data = next
     persist(next)
     notify()
-    scheduleSync(next)
+    scheduleSync()
   }
 
-  // ── Projects ──────────────────────────────────────────────────────────────
-  // project: { id, name, color, createdAt,
-  //            columns: [{ id, name }],
-  //            items: [{ id, label, unit, code, rate1, rate2, rate3, divBy2 }],
-  //            folders: [] }
+  // ── Projects ────────────────────────────────────────────────────────────────
 
   function createProject(name, color, columns = [], items = [], templateId = null) {
     commit([..._data, {
@@ -171,9 +194,7 @@ export function useStore() {
     if (project) saveProjectDefaults(project.columns || [], items)
   }
 
-  // ── Folders (recursive tree) ──────────────────────────────────────────────
-  // folder: { id, name, createdAt, folders: [], payrolls: [],
-  //           rows: { primero: [], segundo: [], tercero: [] } }
+  // ── Folders ─────────────────────────────────────────────────────────────────
 
   function createFolder(pid, parentFid, name) {
     const folder = {
@@ -194,9 +215,7 @@ export function useStore() {
     }))
   }
 
-  // ── Folder rows (per-position data entry) ────────────────────────────────
-  // rows is { primero: [], segundo: [], tercero: [] }
-  // Legacy: if rows is a flat array, treat as primero
+  // ── Folder rows ──────────────────────────────────────────────────────────────
 
   function _normalizeRows(rows) {
     if (!rows) return { primero: [], segundo: [], tercero: [] }
@@ -255,7 +274,7 @@ export function useStore() {
     }))
   }
 
-  // ── Payrolls ──────────────────────────────────────────────────────────────
+  // ── Payrolls ─────────────────────────────────────────────────────────────────
 
   function savePayroll(pid, fid, payroll) {
     commit(_data.map(p => {
@@ -323,5 +342,29 @@ export function useStore() {
     saveFolderSummary,
     setFolderRows,
     addSheet, deleteSheet,
+  }
+}
+
+// ── Crews store ───────────────────────────────────────────────────────────────
+
+function commitCrews(next) {
+  _crews = next
+  persistCrews(next)
+  notifyCrews()
+  scheduleSync()
+}
+
+export function useCrews() {
+  const [crews, setCrews] = useState(_crews)
+
+  useEffect(() => {
+    _crewListeners.push(setCrews)
+    return () => { _crewListeners = _crewListeners.filter(f => f !== setCrews) }
+  }, [])
+
+  return {
+    crews,
+    saveCrew:   (crew) => commitCrews([..._crews, crew]),
+    deleteCrew: (id)   => commitCrews(_crews.filter(c => c.id !== id)),
   }
 }
