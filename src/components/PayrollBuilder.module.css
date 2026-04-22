@@ -133,6 +133,7 @@
 .divideLabel { font-size: 10px; font-weight: 700; color: #ccc; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
 .btnDiv { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #666; cursor: pointer; }
 .btnDiv:hover { border-color: #3949ab; color: #3949ab; }
+.btnDivOn { background: #3949ab !important; color: #fff !important; border-color: #3949ab !important; }
 .btnReset { background: #fff; border: 1px solid #f5c6cb; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #c0392b; cursor: pointer; }
 .btnReset:hover { background: #fff5f5; }
 

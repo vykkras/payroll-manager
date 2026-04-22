@@ -4,15 +4,17 @@ import Home        from './pages/Home'
 import ProjectPage from './pages/ProjectPage'
 import FolderView  from './pages/FolderView'
 import Editor      from './pages/Editor'
+import SheetEditor from './pages/SheetEditor'
 import './index.css'
 
 export default function App() {
   const store = useStore()
-  const [route, setRoute] = useState({ page: 'home', pid: null, fid: null })
+  const [route, setRoute] = useState({ page: 'home', pid: null, fid: null, sheetId: null })
 
-  const goHome    = ()         => setRoute({ page: 'home',    pid: null, fid: null })
-  const goProject = pid        => setRoute({ page: 'project', pid,       fid: null })
-  const goFolder  = (pid, fid) => setRoute({ page: 'folder',  pid,       fid })
+  const goHome    = ()         => setRoute({ page: 'home',    pid: null, fid: null, sheetId: null })
+  const goProject = pid        => setRoute({ page: 'project', pid,       fid: null, sheetId: null })
+  const goFolder  = (pid, fid) => setRoute({ page: 'folder',  pid,       fid,       sheetId: null })
+  const goSheet   = (pid, sheetId) => setRoute({ page: 'sheet', pid, fid: null, sheetId })
   const goEditor = (pid, fid) => {
     store.clearFolderRows(pid, fid)
     setRoute({ page: 'editor', pid, fid, editPayroll: null })
@@ -46,6 +48,7 @@ export default function App() {
           project={project}
           onBack={goHome}
           onOpenFolder={fid => goFolder(project.id, fid)}
+          onOpenSheet={sheetId => goSheet(project.id, sheetId)}
         />
       )}
 
@@ -71,6 +74,18 @@ export default function App() {
           onBack={() => goFolder(route.pid, route.fid)}
         />
       )}
+
+      {route.page === 'sheet' && project && (() => {
+        const sheet = (project.sheets || []).find(s => s.id === route.sheetId)
+        return sheet ? (
+          <SheetEditor
+            store={store}
+            project={project}
+            sheet={sheet}
+            onBack={() => goProject(route.pid)}
+          />
+        ) : null
+      })()}
     </>
   )
 }

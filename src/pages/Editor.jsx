@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { uid } from '../store/useStore'
 import PayrollBuilder from '../components/PayrollBuilder'
 import PrintView from '../components/PrintView'
@@ -34,12 +34,19 @@ function normalizeRows(rows) {
 }
 
 // ── Editable row ──────────────────────────────────────────────────────────────
-function EditableRow({ row, columns, onSave, onDelete }) {
+function EditableRow({ row, columns, onSave, onDelete, onDragStart, dragFill, onMouseEnter }) {
   const [vals, setVals] = useState(() => {
     const v = {}
     columns.forEach(c => { v[c.id] = row[c.id] ?? '' })
     return v
   })
+
+  useEffect(() => {
+    if (!dragFill) return
+    const next = { ...vals, [dragFill.colId]: dragFill.value }
+    setVals(next)
+    onSave({ ...row, ...next })
+  }, [dragFill])
 
   function handleBlur(colId) {
     const computed = evalFormula(vals[colId])
@@ -49,7 +56,7 @@ function EditableRow({ row, columns, onSave, onDelete }) {
   }
 
   return (
-    <tr className={s.dataRow}>
+    <tr className={s.dataRow} onMouseEnter={onMouseEnter}>
       {columns.map(c => (
         <td key={c.id} className={s.cellTd}>
           <input
@@ -58,6 +65,10 @@ function EditableRow({ row, columns, onSave, onDelete }) {
             onChange={e => setVals(v => ({ ...v, [c.id]: e.target.value }))}
             onBlur={() => handleBlur(c.id)}
             onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+          />
+          <span
+            className={s.dragHandle}
+            onMouseDown={e => { e.preventDefault(); onDragStart(c.id, vals[c.id]) }}
           />
         </td>
       ))}
@@ -74,11 +85,41 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
   const allRows  = normalizeRows(folder.rows)
   const rows     = allRows[position] || []
 
-  const [filters,  setFilters] = useState({})
-  const [newRow,   setNewRow]  = useState(() => {
+  const [filters,       setFilters]       = useState({})
+  const [newRow,        setNewRow]        = useState(() => {
     const v = {}; columns.forEach(c => { v[c.id] = '' }); return v
   })
-  const [delRowId, setDelRowId] = useState(null)
+  const [delRowId,      setDelRowId]      = useState(null)
+  const [dragState,     setDragState]     = useState(null)   // { colId, value }
+  const [dragFilledRows, setDragFilledRows] = useState(() => new Set())
+
+  useEffect(() => {
+    if (!dragState) return
+    document.body.style.cursor = 'ns-resize'
+    document.body.style.userSelect = 'none'
+    function onMouseUp() {
+      setDragState(null)
+      setDragFilledRows(new Set())
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.addEventListener('mouseup', onMouseUp)
+    return () => {
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [dragState])
+
+  function handleDragStart(colId, value) {
+    setDragState({ colId, value })
+    setDragFilledRows(new Set())
+  }
+
+  function handleRowEnter(rowId) {
+    if (!dragState || dragFilledRows.has(rowId)) return
+    setDragFilledRows(prev => { const n = new Set(prev); n.add(rowId); return n })
+  }
 
   const filterCols = columns.filter(c => c.filter)
 
@@ -104,7 +145,6 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
   const totals = useMemo(() => {
     const t = {}
     columns.forEach(col => {
-      if (!col.sum) return
       const nonempty = filteredRows.filter(r => r[col.id] !== '' && r[col.id] != null)
       if (nonempty.length === 0) return
       const nums = nonempty.map(r => parseFloat(r[col.id]))
@@ -176,6 +216,9 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
                 columns={columns}
                 onSave={updated => store.updateFolderRow(project.id, folder.id, updated, position)}
                 onDelete={() => setDelRowId(row.id)}
+                onDragStart={handleDragStart}
+                dragFill={dragFilledRows.has(row.id) && dragState ? dragState : null}
+                onMouseEnter={() => handleRowEnter(row.id)}
               />
             ))}
             <tr className={s.inlineAddRow}>

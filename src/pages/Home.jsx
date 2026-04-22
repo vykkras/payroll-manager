@@ -131,7 +131,7 @@ export default function Home({ store, onOpenProject }) {
   // ── Create project ────────────────────────────────────────────────────────
   function handleCreate() {
     if (!name.trim()) return
-    store.createProject(name.trim(), color, columns, items)
+    store.createProject(name.trim(), color, columns, items, tplId)
     saveProjectDefaults(columns, items)
     setShowModal(false)
   }

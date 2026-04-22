@@ -1,13 +1,36 @@
 import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 const KEY = 'payroll_manager_v2'
 const DEFAULTS_KEY = 'payroll_manager_defaults'
+const SYNC_ROW_ID = 'main'
+
+const supabase = createClient(
+  'https://rqnmaoqzdwnuaiwrutte.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxbm1hb3F6ZHdudWFpd3J1dHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5ODE1MzAsImV4cCI6MjA4NDU1NzUzMH0.ZE77nGj5-4zCSDwmAh5exlnQ_NcVxGniDVua_qLA0Fs'
+)
 
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]') } catch { return [] }
 }
 function persist(data) {
   localStorage.setItem(KEY, JSON.stringify(data))
+}
+
+let syncTimer = null
+function scheduleSync(data) {
+  clearTimeout(syncTimer)
+  syncTimer = setTimeout(async () => {
+    try {
+      await supabase.from('payroll_manager_state').upsert({
+        id: SYNC_ROW_ID,
+        data,
+        updated_at: new Date().toISOString(),
+      })
+    } catch (e) {
+      console.warn('Supabase sync failed', e)
+    }
+  }, 1500)
 }
 
 export function loadProjectDefaults() {
@@ -80,6 +103,26 @@ export function getData() { return _data }
 
 function notify() { _listeners.forEach(fn => fn([..._data])) }
 
+// On module load: pull from Supabase and overwrite local if remote has data
+;(async () => {
+  try {
+    const { data: row } = await supabase
+      .from('payroll_manager_state')
+      .select('data')
+      .eq('id', SYNC_ROW_ID)
+      .single()
+    if (row?.data && Array.isArray(row.data) && row.data.length > 0) {
+      _data = row.data
+      persist(_data)
+      notify()
+    } else if (_data.length > 0) {
+      scheduleSync(_data)
+    }
+  } catch (e) {
+    console.warn('Supabase initial load failed', e)
+  }
+})()
+
 export function useStore() {
   const [data, setData] = useState(_data)
 
@@ -92,6 +135,7 @@ export function useStore() {
     _data = next
     persist(next)
     notify()
+    scheduleSync(next)
   }
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -100,12 +144,14 @@ export function useStore() {
   //            items: [{ id, label, unit, code, rate1, rate2, rate3, divBy2 }],
   //            folders: [] }
 
-  function createProject(name, color, columns = [], items = []) {
+  function createProject(name, color, columns = [], items = [], templateId = null) {
     commit([..._data, {
       id: uid(), name, color,
       columns, items,
+      templateId,
       createdAt: new Date().toISOString(),
       folders: [],
+      sheets: [],
     }])
   }
 
@@ -255,6 +301,18 @@ export function useStore() {
     }))
   }
 
+  function addSheet(pid, sheet) {
+    commit(_data.map(p => p.id !== pid ? p : {
+      ...p, sheets: [...(p.sheets || []), sheet],
+    }))
+  }
+
+  function deleteSheet(pid, sheetId) {
+    commit(_data.map(p => p.id !== pid ? p : {
+      ...p, sheets: (p.sheets || []).filter(s => s.id !== sheetId),
+    }))
+  }
+
   return {
     data,
     createProject, deleteProject,
@@ -264,5 +322,6 @@ export function useStore() {
     savePayroll, deletePayroll,
     saveFolderSummary,
     setFolderRows,
+    addSheet, deleteSheet,
   }
 }

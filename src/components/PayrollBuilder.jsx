@@ -86,8 +86,10 @@ export default function PayrollBuilder({
     return { primero: [hotel()], segundo: [hotel()], tercero: [] }
   })
   const [crews,     setCrews]     = useState(loadCrews)
-  const [fillAll,   setFillAll]   = useState(false)   // fill all 3 positions
-  const [fillTwo,   setFillTwo]   = useState(false)   // fill Primero → Segundo only
+  const [fillAll,       setFillAll]       = useState(false)
+  const [fillTwo,       setFillTwo]       = useState(false)
+  const [div2On,        setDiv2On]        = useState({ primero: false, segundo: false, tercero: false })
+  const [div2Originals, setDiv2Originals] = useState({ primero: {}, segundo: {}, tercero: {} })
 
   const pos    = POSITIONS.find(p => p.key === position)
   const posIdx = { primero: '1', segundo: '2', tercero: '3' }[position]
@@ -169,7 +171,7 @@ export default function PayrollBuilder({
     }))
   }
 
-  // ── Divide all qtys for current position ────────────────────────────────────
+  // ── Divide all qtys for current position (one-shot) ─────────────────────────
   function divideQtys(n) {
     setItems(its => its.map(it => {
       const qty = parseFloat(it[`qty${posIdx}`]) || 0
@@ -181,6 +183,33 @@ export default function PayrollBuilder({
         [`amt${posIdx}`]: calcAmount(newQty, it[`rate${posIdx}`]),
       }
     }))
+  }
+
+  // ── ÷2 toggle for current position ───────────────────────────────────────────
+  function toggleDiv2() {
+    const isOn = div2On[position]
+    if (!isOn) {
+      const originals = {}
+      setItems(its => {
+        const next = its.map((it, i) => {
+          originals[i] = it[`qty${posIdx}`]
+          const qty = parseFloat(it[`qty${posIdx}`]) || 0
+          if (qty === 0) return it
+          const newQty = Math.round(qty / 2)
+          return { ...it, [`qty${posIdx}`]: newQty === 0 ? '' : String(newQty), [`amt${posIdx}`]: calcAmount(newQty, it[`rate${posIdx}`]) }
+        })
+        setDiv2Originals(prev => ({ ...prev, [position]: originals }))
+        return next
+      })
+      setDiv2On(prev => ({ ...prev, [position]: true }))
+    } else {
+      const originals = div2Originals[position] || {}
+      setItems(its => its.map((it, i) => {
+        const origQty = originals[i] ?? it[`qty${posIdx}`]
+        return { ...it, [`qty${posIdx}`]: origQty, [`amt${posIdx}`]: calcAmount(origQty, it[`rate${posIdx}`]) }
+      }))
+      setDiv2On(prev => ({ ...prev, [position]: false }))
+    }
   }
 
   // ── Discounts (per-position) ─────────────────────────────────────────────────
@@ -411,7 +440,11 @@ export default function PayrollBuilder({
             {fillAll ? '● All 3' : '○ All 3'}
           </button>
           <div className={s.dividerV} />
-          <button className={s.btnDiv} onClick={() => divideQtys(2)}>÷2</button>
+          <button
+            className={`${s.btnDiv} ${div2On[position] ? s.btnDivOn : ''}`}
+            onClick={toggleDiv2}
+            title="Toggle ÷2: halves all quantities for this position. Toggle off to restore."
+          >{div2On[position] ? '● ÷2' : '○ ÷2'}</button>
           <button className={s.btnDiv} onClick={() => divideQtys(3)}>÷3</button>
           <button className={s.btnDiv} onClick={() => divideQtys(4)}>÷4</button>
         </div>

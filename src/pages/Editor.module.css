@@ -91,7 +91,17 @@
 }
 .actionsHead { width: 36px; }
 .table tbody td { padding: 0; border-bottom: 1px solid #f0f0f0; color: #333; }
-.cellTd { padding: 0 !important; }
+.cellTd { padding: 0 !important; position: relative; }
+.dragHandle {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 7px; height: 7px;
+  background: #3949ab; border-radius: 1px;
+  opacity: 0; cursor: ns-resize;
+  pointer-events: none; user-select: none;
+  transition: opacity 0.1s;
+}
+.dataRow:hover .dragHandle { opacity: 1; pointer-events: auto; }
+.dragHandle:hover { background: #1a237e; }
 .cellInput {
   width: 100%; border: none; background: transparent;
   padding: 8px 10px; font-size: 12px; color: #333;

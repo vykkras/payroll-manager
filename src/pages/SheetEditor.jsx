@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import PayrollBuilder from '../components/PayrollBuilder'
 import Modal from '../components/Modal'
+import { SELMA_SHEET_CONFIG } from '../data/templates'
+import { treeFind } from '../store/useStore'
 import s from './SheetEditor.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -40,13 +42,6 @@ function getVal(row, cfgCol, colMap) {
 
 function filterRows(rows, cfg, colMap, filters) {
   let result = rows
-  if (cfg.filterMode === 'nonempty' && cfg.filterCol) {
-    result = result.filter(r => String(getVal(r, cfg.filterCol, colMap) ?? '').trim() !== '')
-  } else if (cfg.filterMode === 'equals' && cfg.filterCol) {
-    result = result.filter(r =>
-      String(getVal(r, cfg.filterCol, colMap) ?? '').trim().toLowerCase() === (cfg.filterVal || '').toLowerCase()
-    )
-  }
   if (filters.subsector && cfg.subsectorCol)
     result = result.filter(r => String(getVal(r, cfg.subsectorCol, colMap) ?? '') === filters.subsector)
   if (filters.crew && cfg.crewCol)
@@ -62,18 +57,25 @@ function fmtNum(n) {
   return isNaN(num) ? '—' : num.toLocaleString('en-US')
 }
 
-// ── PayrollSaveModal — picks folder + week then opens PayrollBuilder ──────────
+function flattenFolders(folders, depth = 0) {
+  const result = []
+  for (const f of folders) {
+    result.push({ ...f, _depth: depth })
+    result.push(...flattenFolders(f.folders || [], depth + 1))
+  }
+  return result
+}
+
+// ── PayrollSaveModal ──────────────────────────────────────────────────────────
 function PayrollSaveModal({ store, project, onClose }) {
-  const [step, setStep]       = useState('pick')   // 'pick' | 'build'
+  const [step, setStep]      = useState('pick')
   const [folderId, setFolderI] = useState('')
-  const [weekId,   setWeekId]  = useState('')
   const [savedMsg, setSavedMsg] = useState(false)
 
-  const folders = project.folders || []
-  const weeks   = folders.find(f => f.id === folderId)?.weeks || []
+  const allFolders = flattenFolders(project.folders || [])
 
   function handleSave(payroll) {
-    store.savePayroll(project.id, folderId, weekId, payroll)
+    store.savePayroll(project.id, folderId, payroll)
     setSavedMsg(true)
     setTimeout(() => { setSavedMsg(false); onClose() }, 1800)
   }
@@ -81,7 +83,7 @@ function PayrollSaveModal({ store, project, onClose }) {
   if (step === 'build') {
     return (
       <PayrollBuilder
-        config={project.config}
+        config={{ items: project.items || [] }}
         onSave={handleSave}
         onClose={onClose}
       />
@@ -90,20 +92,17 @@ function PayrollSaveModal({ store, project, onClose }) {
 
   return (
     <div className={s.pickWrap}>
-      <p className={s.pickHint}>Choose where to save the payroll:</p>
+      <p className={s.pickHint}>Choose a folder to save the payroll:</p>
       <div className={s.pickRow}>
         <div className={s.pickField}>
           <label>Folder</label>
-          <select value={folderId} onChange={e => { setFolderI(e.target.value); setWeekId('') }}>
+          <select value={folderId} onChange={e => setFolderI(e.target.value)}>
             <option value="">— select folder —</option>
-            {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </div>
-        <div className={s.pickField}>
-          <label>Week</label>
-          <select value={weekId} onChange={e => setWeekId(e.target.value)} disabled={!folderId}>
-            <option value="">— select week —</option>
-            {weeks.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            {allFolders.map(f => (
+              <option key={f.id} value={f.id}>
+                {'  '.repeat(f._depth)}{f.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -112,7 +111,7 @@ function PayrollSaveModal({ store, project, onClose }) {
         <button className={s.btnCancel} onClick={onClose}>Cancel</button>
         <button
           className={s.btnOpenEditor}
-          disabled={!folderId || !weekId}
+          disabled={!folderId}
           onClick={() => setStep('build')}
         >Open Editor →</button>
       </div>
@@ -122,44 +121,44 @@ function PayrollSaveModal({ store, project, onClose }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SheetEditor({ store, project, sheet, onBack }) {
-  const cfg = project.config || {}
+  const cfg = SELMA_SHEET_CONFIG
   const [filters, setFilters]   = useState({ subsector: '', crew: '', date: '' })
   const [showEditor, setShowEditor] = useState(false)
 
   const colMap = useMemo(() => {
     const allCfgCols = [
-      cfg.crewCol, cfg.subsectorCol, cfg.dateCol, cfg.addressCol,
-      cfg.filterCol, ...(cfg.items || []).map(it => it.col)
+      cfg.crewCol, cfg.subsectorCol, cfg.dateCol,
+      ...cfg.items.map(it => it.col)
     ].filter(Boolean)
     return buildColMap(sheet.rows, allCfgCols)
-  }, [sheet.rows, cfg])
+  }, [sheet.rows])
 
   const filteredRows = useMemo(() =>
     filterRows(sheet.rows, cfg, colMap, filters),
-    [sheet.rows, cfg, colMap, filters]
+    [sheet.rows, colMap, filters]
   )
 
   const subsectors = useMemo(() => {
     if (!cfg.subsectorCol) return []
     return [...new Set(sheet.rows.map(r => String(getVal(r, cfg.subsectorCol, colMap) ?? '')).filter(Boolean))].sort()
-  }, [sheet.rows, cfg.subsectorCol, colMap])
+  }, [sheet.rows, colMap])
 
   const crews = useMemo(() => {
     if (!cfg.crewCol) return []
     return [...new Set(sheet.rows.map(r => String(getVal(r, cfg.crewCol, colMap) ?? '')).filter(Boolean))].sort()
-  }, [sheet.rows, cfg.crewCol, colMap])
+  }, [sheet.rows, colMap])
 
   const dates = useMemo(() => {
     if (!cfg.dateCol) return []
     return [...new Set(sheet.rows.map(r => String(getVal(r, cfg.dateCol, colMap) ?? '')).filter(Boolean))].sort()
-  }, [sheet.rows, cfg.dateCol, colMap])
+  }, [sheet.rows, colMap])
 
   const summary = useMemo(() => {
-    return (cfg.items || []).map(item => ({
+    return cfg.items.map(item => ({
       ...item,
       total: filteredRows.reduce((sum, row) => sum + parseNum(getVal(row, item.col, colMap)), 0),
     }))
-  }, [cfg.items, filteredRows, colMap])
+  }, [filteredRows, colMap])
 
   const unmatchedCols = summary.filter(it => it.col && !colMap[it.col]).map(it => it.col)
 
@@ -178,7 +177,6 @@ export default function SheetEditor({ store, project, sheet, onBack }) {
         </button>
       </header>
 
-      {/* Subsector filter buttons */}
       {subsectors.length > 0 && (
         <div className={s.subBtnsBar}>
           <span className={s.subBtnsLabel}>{cfg.subsectorLabel || 'Subsector'}</span>
@@ -213,7 +211,6 @@ export default function SheetEditor({ store, project, sheet, onBack }) {
         </div>
       )}
 
-      {/* No subsectors but has other filters */}
       {subsectors.length === 0 && (crews.length > 0 || dates.length > 0) && (
         <div className={s.filterBar}>
           {crews.length > 0 && <>
@@ -250,24 +247,20 @@ export default function SheetEditor({ store, project, sheet, onBack }) {
               <strong>Sheet columns:</strong> {[...new Set(sheet.rows.flatMap(r => Object.keys(r)))].join(', ')}
             </div>
           )}
-          {summary.length === 0 ? (
-            <div className={s.noConfig}>No line items configured — go to Config tab.</div>
-          ) : (
-            <table className={s.summaryTable}>
-              <thead><tr><th>Item</th><th>Unit</th><th className={s.r}>Total</th></tr></thead>
-              <tbody>
-                {summary.map((item, i) => (
-                  <tr key={i}>
-                    <td className={s.itemName}>{item.label}</td>
-                    <td className={s.itemUnit}>{item.unit}</td>
-                    <td className={`${s.r} ${s.itemTotal} ${!item.total ? s.zero : ''}`}>
-                      {fmtNum(item.total)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <table className={s.summaryTable}>
+            <thead><tr><th>Item</th><th>Unit</th><th className={s.r}>Total</th></tr></thead>
+            <tbody>
+              {summary.map((item, i) => (
+                <tr key={i}>
+                  <td className={s.itemName}>{item.label}</td>
+                  <td className={s.itemUnit}>{item.unit}</td>
+                  <td className={`${s.r} ${s.itemTotal} ${!item.total ? s.zero : ''}`}>
+                    {fmtNum(item.total)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

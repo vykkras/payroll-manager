@@ -10,6 +10,32 @@ function makeCols(names) {
   return names.map(name => ({ id: uid(), name }))
 }
 
+export const SELMA_SHEET_CONFIG = {
+  subsectorCol:  'SUBSECTOR',
+  crewCol:       'CREW',
+  dateCol:       'DATE',
+  subsectorLabel: 'Subsector',
+  crewLabel:     'Crew',
+  items: [
+    { label: 'Strand',                unit: 'ft', col: 'Strand'                },
+    { label: 'Fiber',                 unit: 'ft', col: 'Fiber'                 },
+    { label: 'Tree Trim',             unit: 'ft', col: 'Tree Trim'             },
+    { label: 'Snowshoe',              unit: 'ea', col: 'Snowshoe'              },
+    { label: 'Make Ready (100)',       unit: 'ea', col: 'Make Ready (100)'      },
+    { label: 'Make Ready (350-2000)',  unit: 'ea', col: 'Make Ready (350-2000)' },
+    { label: 'Make Ready Drop',        unit: 'ea', col: 'Make Ready Drop'       },
+    { label: 'Down Guy',              unit: 'ea', col: 'Down Guy'              },
+    { label: 'Overhead Guy',          unit: 'ea', col: 'Overhead Guy'          },
+    { label: 'Anchor',                unit: 'ea', col: 'Anchor'                },
+    { label: 'Riser',                 unit: 'ea', col: 'Riser'                 },
+  ],
+}
+
+export function isSelmaProject(project) {
+  return project.templateId === 'selma' ||
+    (project.columns || []).some(c => c.name === 'SUBSECTOR')
+}
+
 export const TEMPLATES = [
   {
     id: 'georgia',
