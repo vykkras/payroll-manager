@@ -21,6 +21,8 @@ const POS = [
   { key: 'segundo', label: 'Segundo', color: '#2e7d32', bg: '#e8f5e9', idx: '2' },
   { key: 'tercero', label: 'Tercero', color: '#e65100', bg: '#fff3e0', idx: '3' },
 ]
+const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
+const POS_BG    = { primero: '#e8eaf6', segundo: '#e8f5e9', tercero: '#fff3e0' }
 
 function fmtPct(n) {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
@@ -193,6 +195,22 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                           <span className={s.posBadge} style={{ color: p.color, background: p.bg }}>{p.label}</span>
                           <span className={s.payrollCrew}>{crew || '—'}</span>
                           <span className={s.payrollTotal} style={{ color: p.color }}>{fmtMoney(total)}</span>
+                        </div>
+                      )
+                    })}
+                    {(pr.extraSlots || []).map(slot => {
+                      const crew  = pr.crewNames?.[slot.id]
+                      const sub   = (pr.items || []).reduce((sum, it) => sum + (it.extraSlots?.[slot.id]?.amt || 0), 0)
+                      const disc  = (pr.discounts?.[slot.id] || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+                      const total = sub - disc
+                      if (!crew && !total) return null
+                      const color = POS_COLOR[slot.posKey] || '#3949ab'
+                      const bg    = POS_BG[slot.posKey]    || '#e8eaf6'
+                      return (
+                        <div key={slot.id} className={s.payrollPosRow}>
+                          <span className={s.posBadge} style={{ color, background: bg }}>{slot.label}</span>
+                          <span className={s.payrollCrew}>{crew || '—'}</span>
+                          <span className={s.payrollTotal} style={{ color }}>{fmtMoney(total)}</span>
                         </div>
                       )
                     })}

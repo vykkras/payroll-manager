@@ -146,9 +146,10 @@ export default function PrintView({ project, folder, position, payroll, onClose 
           ) : (() => {
             const sumCols = {}
             columns.forEach(col => {
-              if (!col.sum) return
-              const nums = rows.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
-              if (nums.length > 0) sumCols[col.id] = nums.reduce((a, b) => a + b, 0)
+              const nonempty = rows.filter(r => r[col.id] !== '' && r[col.id] != null)
+              if (nonempty.length === 0) return
+              const nums = nonempty.map(r => parseFloat(r[col.id]))
+              if (nums.every(n => !isNaN(n))) sumCols[col.id] = nums.reduce((a, b) => a + b, 0)
             })
             const hasSums = Object.keys(sumCols).length > 0
             return (
