@@ -267,7 +267,7 @@ export function useStore() {
       if (p.id !== pid) return p
       return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
         const r = _normalizeRows(f.rows)
-        return { ...f, rows: { ...r, [pos]: [...r[pos], row] } }
+        return { ...f, rows: { ...r, [pos]: [...(r[pos] || []), row] } }
       })}
     }))
   }
@@ -277,7 +277,7 @@ export function useStore() {
       if (p.id !== pid) return p
       return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
         const r = _normalizeRows(f.rows)
-        return { ...f, rows: { ...r, [pos]: r[pos].map(x => x.id === row.id ? row : x) } }
+        return { ...f, rows: { ...r, [pos]: (r[pos] || []).map(x => x.id === row.id ? row : x) } }
       })}
     }))
   }
@@ -287,7 +287,7 @@ export function useStore() {
       if (p.id !== pid) return p
       return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
         const r = _normalizeRows(f.rows)
-        return { ...f, rows: { ...r, [pos]: r[pos].filter(x => x.id !== rowId) } }
+        return { ...f, rows: { ...r, [pos]: (r[pos] || []).filter(x => x.id !== rowId) } }
       })}
     }))
   }
