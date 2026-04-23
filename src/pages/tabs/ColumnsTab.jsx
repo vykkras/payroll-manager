@@ -5,10 +5,25 @@ import s from './ColumnsTab.module.css'
 
 export default function ColumnsTab({ store, project }) {
   const columns = project.columns || []
-  const [input,    setInput]    = useState('')
-  const [editCol,  setEditCol]  = useState(null)   // { id, name } being edited
-  const [editName, setEditName] = useState('')
-  const [delId,    setDelId]    = useState(null)
+  const [input,        setInput]        = useState('')
+  const [editCol,      setEditCol]      = useState(null)
+  const [editName,     setEditName]     = useState('')
+  const [delId,        setDelId]        = useState(null)
+  const [dragIndex,    setDragIndex]    = useState(null)
+  const [dragOverIdx,  setDragOverIdx]  = useState(null)
+
+  function handleDragStart(i) { setDragIndex(i) }
+  function handleDragOver(e, i) { e.preventDefault(); setDragOverIdx(i) }
+  function handleDrop(dropIndex) {
+    if (dragIndex === null || dragIndex === dropIndex) { setDragIndex(null); setDragOverIdx(null); return }
+    const next = [...columns]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(dropIndex, 0, moved)
+    store.updateProjectColumns(project.id, next)
+    setDragIndex(null)
+    setDragOverIdx(null)
+  }
+  function handleDragEnd() { setDragIndex(null); setDragOverIdx(null) }
 
   function handleAdd() {
     const v = input.trim()
@@ -65,7 +80,16 @@ export default function ColumnsTab({ store, project }) {
       ) : (
         <div className={s.list}>
           {columns.map((col, i) => (
-            <div key={col.id} className={s.row}>
+            <div
+              key={col.id}
+              className={`${s.row} ${dragIndex === i ? s.rowDragging : ''} ${dragOverIdx === i && dragIndex !== i ? s.rowDragOver : ''}`}
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={e => handleDragOver(e, i)}
+              onDrop={() => handleDrop(i)}
+              onDragEnd={handleDragEnd}
+            >
+              <span className={s.grip}>⠿</span>
               <span className={s.num}>{i + 1}</span>
               <span className={s.colName}>{col.name}</span>
               <button

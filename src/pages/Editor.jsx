@@ -121,6 +121,7 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
     setDragFilledRows(prev => { const n = new Set(prev); n.add(rowId); return n })
   }
 
+
   const filterCols = columns.filter(c => c.filter)
 
   const filterOptions = useMemo(() => {

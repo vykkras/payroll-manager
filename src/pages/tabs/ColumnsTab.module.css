@@ -11,8 +11,12 @@
 .btnAdd:not(:disabled):hover { background: #2c2c4a; }
 
 .list { display: flex; flex-direction: column; gap: 6px; }
-.row { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 11px 14px; display: flex; align-items: center; gap: 12px; }
+.row { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 11px 14px; display: flex; align-items: center; gap: 12px; cursor: grab; }
 .row:hover { border-color: #c5cae9; }
+.rowDragging { opacity: 0.35; }
+.rowDragOver { border-color: #3949ab; background: #f0f2ff; }
+.grip { font-size: 14px; color: #ccc; cursor: grab; flex-shrink: 0; user-select: none; }
+.row:hover .grip { color: #999; }
 .num { font-size: 11px; font-weight: 700; color: #bbb; width: 20px; text-align: center; flex-shrink: 0; }
 .colName { font-size: 14px; font-weight: 600; color: #1a1a2e; flex: 1; }
 .filterBtn {
