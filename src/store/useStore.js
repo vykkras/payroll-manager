@@ -295,9 +295,11 @@ export function useStore() {
   function clearFolderRows(pid, fid) {
     commit(_data.map(p => {
       if (p.id !== pid) return p
-      return { ...p, folders: treeUpdate(p.folders || [], fid, f => ({
-        ...f, rows: { primero: [], segundo: [], tercero: [] },
-      }))}
+      return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
+        const extraKeys = {}
+        ;(f.extraSlots || []).forEach(s => { extraKeys[s.id] = [] })
+        return { ...f, rows: { primero: [], segundo: [], tercero: [], ...extraKeys } }
+      })}
     }))
   }
 
