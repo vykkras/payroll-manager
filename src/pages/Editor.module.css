@@ -47,15 +47,27 @@
 }
 
 /* Position tabs (left panel) */
-.posTabs { display: flex; border-bottom: 1px solid #ececec; flex-shrink: 0; background: #fff; }
+.posTabs { display: flex; border-bottom: 1px solid #ececec; flex-shrink: 0; background: #fff; flex-wrap: wrap; }
+.posTabWrap { display: flex; align-items: stretch; }
 .posTab {
-  flex: 1; padding: 10px 6px; text-align: center; cursor: pointer;
+  padding: 10px 8px; text-align: center; cursor: pointer;
   font-size: 12px; font-weight: 600; color: #aaa;
   background: none; border: none; border-bottom: 3px solid transparent;
-  transition: all 0.15s;
+  transition: all 0.15s; display: flex; align-items: center; gap: 5px;
 }
 .posTab:hover { color: #3949ab; background: #f8f9fb; }
 .posTabActive { border-bottom-width: 3px; }
+.slotClose {
+  font-size: 14px; line-height: 1; color: inherit; opacity: 0.5;
+  padding: 0 1px; cursor: pointer;
+}
+.slotClose:hover { opacity: 1; }
+.slotAdd {
+  padding: 0 5px; font-size: 14px; font-weight: 700; color: #bbb;
+  background: none; border: none; cursor: pointer; align-self: center;
+  border-bottom: 3px solid transparent;
+}
+.slotAdd:hover { color: #3949ab; }
 
 /* Table wrap */
 .tableWrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

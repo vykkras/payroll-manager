@@ -5,11 +5,24 @@ import PrintView from '../components/PrintView'
 import Modal from '../components/Modal'
 import s from './Editor.module.css'
 
-const POSITIONS = [
-  { key: 'primero', label: 'Primero', color: '#3949ab' },
-  { key: 'segundo', label: 'Segundo', color: '#2e7d32' },
-  { key: 'tercero', label: 'Tercero', color: '#e65100' },
+const BASE_POSITIONS = [
+  { id: 'primero', posKey: 'primero', label: 'Primero', color: '#3949ab' },
+  { id: 'segundo', posKey: 'segundo', label: 'Segundo', color: '#2e7d32' },
+  { id: 'tercero', posKey: 'tercero', label: 'Tercero', color: '#e65100' },
 ]
+const POS_COLORS = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
+
+function buildSlots(folder) {
+  const extras = folder.extraSlots || []
+  const result = []
+  BASE_POSITIONS.forEach(base => {
+    result.push({ ...base, base: true })
+    extras.filter(e => e.posKey === base.posKey).forEach(e =>
+      result.push({ id: e.id, posKey: e.posKey, label: e.label, color: POS_COLORS[e.posKey], base: false })
+    )
+  })
+  return result
+}
 
 // Evaluate =expr formulas (only digits and + - * / . ( ) allowed)
 function evalFormula(str) {
@@ -282,15 +295,22 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
 
 // ── Main Editor component ─────────────────────────────────────────────────────
 export default function Editor({ store, project, folder, editPayroll, onBack }) {
-  const [position,   setPosition]   = useState(editPayroll?.position || 'primero')
-  const [addAll,     setAddAll]     = useState(false)
-  const [addTwo,     setAddTwo]     = useState(false)
-  const [savedMsg,   setSavedMsg]   = useState(false)
-  const [showClear,  setShowClear]  = useState(false)
-  const [showPrint,  setShowPrint]  = useState(false)
-  const [draft,      setDraft]      = useState(editPayroll || null)
+  const slots = buildSlots(folder)
+  const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
+  const [addAll,       setAddAll]       = useState(false)
+  const [addTwo,       setAddTwo]       = useState(false)
+  const [savedMsg,     setSavedMsg]     = useState(false)
+  const [showClear,    setShowClear]    = useState(false)
+  const [showPrint,    setShowPrint]    = useState(false)
+  const [draft,        setDraft]        = useState(editPayroll || null)
 
-  const posInfo = POSITIONS.find(p => p.key === position)
+  const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
+  const posKey = activeSlot.posKey
+
+  function handleAddSlot(baseposKey) {
+    const slotId = store.addPositionSlot(project.id, folder.id, baseposKey)
+    setActiveSlotId(slotId)
+  }
 
   function handlePayrollSave(payroll) {
     // Snapshot current production rows into the payroll so they're preserved permanently
@@ -325,19 +345,26 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
         <div className={s.leftPanel}>
           {/* Position tabs */}
           <div className={s.posTabs}>
-            {POSITIONS.map(p => (
-              <button
-                key={p.key}
-                className={`${s.posTab} ${position === p.key ? s.posTabActive : ''}`}
-                style={position === p.key ? { '--tab-color': p.color, borderBottomColor: p.color, color: p.color } : {}}
-                onClick={() => setPosition(p.key)}
-              >
-                {p.label}
-              </button>
+            {slots.map(slot => (
+              <div key={slot.id} className={s.posTabWrap}>
+                <button
+                  className={`${s.posTab} ${activeSlotId === slot.id ? s.posTabActive : ''}`}
+                  style={activeSlotId === slot.id ? { '--tab-color': slot.color, borderBottomColor: slot.color, color: slot.color } : {}}
+                  onClick={() => setActiveSlotId(slot.id)}
+                >
+                  {slot.label}
+                  {!slot.base && (
+                    <span className={s.slotClose} onClick={e => { e.stopPropagation(); store.removePositionSlot(project.id, folder.id, slot.id); setActiveSlotId(slot.posKey) }}>×</span>
+                  )}
+                </button>
+                {slot.base && (
+                  <button className={s.slotAdd} onClick={() => handleAddSlot(slot.posKey)} title={`Add another ${slot.label}`}>+</button>
+                )}
+              </div>
             ))}
           </div>
           <div className={s.panelTitle}>
-            <span style={{ color: posInfo?.color }}>{posInfo?.label} — Production Data</span>
+            <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
             <div className={s.addBtnGroup}>
               <button
                 className={`${s.addAllBtn} ${addTwo ? s.addAllBtnOn : ''}`}
@@ -352,11 +379,11 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             </div>
           </div>
           <DataTable
-            key={position}
+            key={activeSlotId}
             store={store}
             project={project}
             folder={folder}
-            position={position}
+            position={activeSlotId}
             addAll={addAll}
             addTwo={addTwo}
           />
@@ -368,8 +395,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           <PayrollBuilder
             config={{ items: project.items || [] }}
             editPayroll={draft}
-            position={position}
-            onPositionChange={setPosition}
+            position={posKey}
+            onPositionChange={pk => setActiveSlotId(pk)}
             onSave={handlePayrollSave}
             onClose={null}
           />

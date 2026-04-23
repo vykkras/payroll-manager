@@ -102,6 +102,14 @@ function treeUpdate(folders, fid, fn) {
   })
 }
 
+const POS_LABELS = { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
+
+function normalizeRowsObj(rows) {
+  if (!rows) return { primero: [], segundo: [], tercero: [] }
+  if (Array.isArray(rows)) return { primero: rows, segundo: [], tercero: [] }
+  return { primero: [], segundo: [], tercero: [], ...rows }
+}
+
 // ── Module state ──────────────────────────────────────────────────────────────
 
 let _data = load()
@@ -212,6 +220,37 @@ export function useStore() {
     commit(_data.map(p => p.id !== pid ? p : {
       ...p,
       folders: treeRemove(p.folders || [], fid),
+    }))
+  }
+
+  function addPositionSlot(pid, fid, posKey) {
+    const slotId = uid()
+    commit(_data.map(p => p.id !== pid ? p : {
+      ...p,
+      folders: treeUpdate(p.folders || [], fid, f => {
+        const existing = (f.extraSlots || []).filter(s => s.posKey === posKey).length
+        const num = existing + 2
+        return {
+          ...f,
+          extraSlots: [...(f.extraSlots || []), { id: slotId, posKey, label: `${POS_LABELS[posKey]} ${num}` }],
+        }
+      }),
+    }))
+    return slotId
+  }
+
+  function removePositionSlot(pid, fid, slotId) {
+    commit(_data.map(p => p.id !== pid ? p : {
+      ...p,
+      folders: treeUpdate(p.folders || [], fid, f => {
+        const rows = normalizeRowsObj(f.rows)
+        delete rows[slotId]
+        return {
+          ...f,
+          extraSlots: (f.extraSlots || []).filter(s => s.id !== slotId),
+          rows,
+        }
+      }),
     }))
   }
 
@@ -336,7 +375,7 @@ export function useStore() {
     data,
     createProject, deleteProject,
     updateProjectColumns, updateProjectItems,
-    createFolder, deleteFolder,
+    createFolder, deleteFolder, addPositionSlot, removePositionSlot,
     addFolderRow, updateFolderRow, deleteFolderRow, clearFolderRows,
     savePayroll, deletePayroll,
     saveFolderSummary,
