@@ -435,7 +435,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
         <PrintView
           project={project}
           folder={folder}
-          position={position}
+          position={posKey}
           payroll={draft}
           onClose={() => setShowPrint(false)}
         />
