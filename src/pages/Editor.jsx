@@ -395,8 +395,9 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           <PayrollBuilder
             config={{ items: project.items || [] }}
             editPayroll={draft}
-            position={posKey}
-            onPositionChange={pk => setActiveSlotId(pk)}
+            slots={slots}
+            activeSlotId={activeSlotId}
+            onSlotChange={setActiveSlotId}
             onSave={handlePayrollSave}
             onClose={null}
           />
