@@ -93,7 +93,7 @@ function EditableRow({ row, columns, onSave, onDelete, onDragStart, dragFill, on
 }
 
 // ── Data table (per-position) ─────────────────────────────────────────────────
-function DataTable({ store, project, folder, position, addAll, addTwo }) {
+function DataTable({ store, project, folder, position, addAll, addTwo, all2Target }) {
   const columns = project.columns || []
   const allRows  = normalizeRows(folder.rows)
   const rows     = allRows[position] || []
@@ -174,7 +174,7 @@ function DataTable({ store, project, folder, position, addAll, addTwo }) {
     if (!Object.values(newRow).some(v => String(v).trim())) return
     const evaluated = {}
     Object.entries(newRow).forEach(([k, v]) => { evaluated[k] = evalFormula(v) })
-    const targets = addAll ? ['primero', 'segundo', 'tercero'] : addTwo ? ['primero', 'segundo'] : [position]
+    const targets = addAll ? ['primero', 'segundo', 'tercero'] : addTwo ? ['primero', all2Target || 'segundo'] : [position]
     targets.forEach(pos => store.addFolderRow(project.id, folder.id, { id: uid(), ...evaluated }, pos))
     const reset = {}; columns.forEach(c => { reset[c.id] = '' }); setNewRow(reset)
   }
@@ -299,6 +299,10 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
   const [addAll,       setAddAll]       = useState(false)
   const [addTwo,       setAddTwo]       = useState(false)
+  const [all2Target,   setAll2Target]   = useState('segundo')
+
+  const segundoSlots = slots.filter(s => s.posKey === 'segundo')
+  const showAll2Target = segundoSlots.length > 1
   const [savedMsg,     setSavedMsg]     = useState(false)
   const [showClear,    setShowClear]    = useState(false)
   const [showPrint,    setShowPrint]    = useState(false)
@@ -369,8 +373,18 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
               <button
                 className={`${s.addAllBtn} ${addTwo ? s.addAllBtnOn : ''}`}
                 onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
-                title="Add new rows to Primero + Segundo only"
+                title="Add new rows to Primero + target"
               >{addTwo ? '● All 2' : '○ All 2'}</button>
+              {showAll2Target && (
+                <select
+                  className={`${s.addAllBtn} ${s.targetSelect}`}
+                  value={all2Target}
+                  onChange={e => setAll2Target(e.target.value)}
+                  title="All 2 target slot"
+                >
+                  {segundoSlots.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              )}
               <button
                 className={`${s.addAllBtn} ${addAll ? s.addAllBtnOn : ''}`}
                 onClick={() => { setAddAll(v => !v); setAddTwo(false) }}
@@ -386,6 +400,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             position={activeSlotId}
             addAll={addAll}
             addTwo={addTwo}
+            all2Target={all2Target}
           />
         </div>
 
@@ -398,6 +413,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             slots={slots}
             activeSlotId={activeSlotId}
             onSlotChange={setActiveSlotId}
+            all2Target={all2Target}
+            onAll2TargetChange={setAll2Target}
             onSave={handlePayrollSave}
             onClose={null}
           />

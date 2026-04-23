@@ -153,6 +153,7 @@
 }
 .addAllBtn:hover { border-color: #3949ab; color: #3949ab; }
 .addAllBtnOn { background: #3949ab; color: #fff !important; border-color: #3949ab !important; }
+.targetSelect { background: #fff; border: 1px solid #e0e0e0; border-radius: 5px; padding: 3px 6px; font-size: 10px; font-weight: 700; color: #3949ab; cursor: pointer; }
 .addRowSubmit {
   background: #3949ab; color: #fff; border: none;
   border-radius: 5px; width: 26px; height: 26px; font-size: 16px;

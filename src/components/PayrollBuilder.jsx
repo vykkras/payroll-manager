@@ -51,6 +51,8 @@ export default function PayrollBuilder({
   slots: slotsProp,
   activeSlotId: activeSlotIdProp,
   onSlotChange,
+  all2Target: all2TargetProp,
+  onAll2TargetChange,
   // legacy single-position props (standalone use)
   position: positionProp,
   onPositionChange,
@@ -149,6 +151,14 @@ export default function PayrollBuilder({
   const [div2On,        setDiv2On]        = useState({})
   const [div2Originals, setDiv2Originals] = useState({})
 
+  // all2Target: controlled from Editor if provided, otherwise local
+  const [all2TargetLocal, setAll2TargetLocal] = useState('segundo')
+  const all2Target    = all2TargetProp !== undefined ? all2TargetProp : all2TargetLocal
+  const setAll2Target = (v) => { setAll2TargetLocal(v); onAll2TargetChange?.(v) }
+
+  const segundoSlots   = slots.filter(s => s.posKey === 'segundo')
+  const showAll2Target = segundoSlots.length > 1
+
   // ── Item qty/rate helpers ─────────────────────────────────────────────────
 
   function getItemQty(item) {
@@ -181,8 +191,17 @@ export default function PayrollBuilder({
       const q1final = shouldHalve ? q1raw / 2 : q1raw
       const q1str = String(q1final)
       const updated = { ...it, qty1: q1str, amt1: calcAmount(q1str, it.rate1) }
-      if (fillTwo || fillAll) { updated.qty2 = q1str; updated.amt2 = calcAmount(q1str, it.rate2); updated.qty2manual = false }
-      if (fillAll)            { updated.qty3 = q1str; updated.amt3 = calcAmount(q1str, it.rate3) }
+      if (fillTwo || fillAll) {
+        const target = all2Target
+        if (target === 'segundo') {
+          updated.qty2 = q1str; updated.amt2 = calcAmount(q1str, it.rate2); updated.qty2manual = false
+        } else {
+          const tSlot = slots.find(s => s.id === target)
+          const rk = tSlot ? `rate${POS_IDX[tSlot.posKey]}` : 'rate2'
+          updated.extraSlots = { ...it.extraSlots, [target]: { qty: q1str, amt: calcAmount(q1str, it[rk]) } }
+        }
+      }
+      if (fillAll) { updated.qty3 = q1str; updated.amt3 = calcAmount(q1str, it.rate3) }
       return updated
     }))
   }
@@ -206,8 +225,14 @@ export default function PayrollBuilder({
   function autoFillSegundo() {
     setItems(its => its.map(it => {
       const q1 = parseFloat(it.qty1) || 0
-      const autoQty2 = it.divBy2 ? q1 / 2 : q1
-      return { ...it, qty2: autoQty2 === 0 ? '' : String(autoQty2), amt2: calcAmount(autoQty2, it.rate2), qty2manual: false }
+      const autoQty = it.divBy2 ? q1 / 2 : q1
+      const qStr = autoQty === 0 ? '' : String(autoQty)
+      if (all2Target === 'segundo') {
+        return { ...it, qty2: qStr, amt2: calcAmount(autoQty, it.rate2), qty2manual: false }
+      }
+      const tSlot = slots.find(s => s.id === all2Target)
+      const rk = tSlot ? `rate${POS_IDX[tSlot.posKey]}` : 'rate2'
+      return { ...it, extraSlots: { ...it.extraSlots, [all2Target]: { qty: qStr, amt: calcAmount(autoQty, it[rk]) } } }
     }))
   }
 
@@ -471,7 +496,17 @@ export default function PayrollBuilder({
       {/* ── Footer controls ── */}
       <div className={s.footer}>
         <div className={s.footerControls}>
-          <button className={`${s.btnFillAll} ${fillTwo ? s.btnFillAllOn : ''}`} onClick={() => { setFillTwo(v => !v); setFillAll(false) }} title="Auto-fill Segundo from Primero">{fillTwo ? '● All 2' : '○ All 2'}</button>
+          <button className={`${s.btnFillAll} ${fillTwo ? s.btnFillAllOn : ''}`} onClick={() => { setFillTwo(v => !v); setFillAll(false) }} title="Auto-fill target from Primero">{fillTwo ? '● All 2' : '○ All 2'}</button>
+          {showAll2Target && (
+            <select
+              className={s.targetSelect}
+              value={all2Target}
+              onChange={e => setAll2Target(e.target.value)}
+              title="All 2 target slot"
+            >
+              {segundoSlots.map(sl => <option key={sl.id} value={sl.id}>{sl.label}</option>)}
+            </select>
+          )}
           <button className={`${s.btnFillAll} ${fillAll ? s.btnFillAllOn : ''}`} onClick={() => { setFillAll(v => !v); setFillTwo(false) }} title="Auto-fill all 3 from Primero">{fillAll ? '● All 3' : '○ All 3'}</button>
           <div className={s.dividerV} />
           <button className={`${s.btnDiv} ${div2On[activeSlotId] ? s.btnDivOn : ''}`} onClick={toggleDiv2} title="Toggle ÷2">{div2On[activeSlotId] ? '● ÷2' : '○ ÷2'}</button>
