@@ -10,14 +10,14 @@ const BASE_POSITIONS = [
   { id: 'segundo', posKey: 'segundo', label: 'Segundo', color: '#2e7d32' },
   { id: 'tercero', posKey: 'tercero', label: 'Tercero', color: '#e65100' },
 ]
-const POS_COLORS = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
+const POS_COLORS  = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
+const POS_LABELS  = { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
 
-function buildSlots(folder) {
-  const extras = folder.extraSlots || []
+function buildSlots(extraSlots) {
   const result = []
   BASE_POSITIONS.forEach(base => {
     result.push({ ...base, base: true })
-    extras.filter(e => e.posKey === base.posKey).forEach(e =>
+    extraSlots.filter(e => e.posKey === base.posKey).forEach(e =>
       result.push({ id: e.id, posKey: e.posKey, label: e.label, color: POS_COLORS[e.posKey], base: false })
     )
   })
@@ -295,7 +295,8 @@ function DataTable({ store, project, folder, position, addAll, addTwo, all2Targe
 
 // ── Main Editor component ─────────────────────────────────────────────────────
 export default function Editor({ store, project, folder, editPayroll, onBack }) {
-  const slots = buildSlots(folder)
+  const [extraSlots, setExtraSlots] = useState(() => editPayroll?.extraSlots || [])
+  const slots = buildSlots(extraSlots)
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
   const [addAll,       setAddAll]       = useState(false)
   const [addTwo,       setAddTwo]       = useState(false)
@@ -311,14 +312,23 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
   const posKey = activeSlot.posKey
 
-  function handleAddSlot(baseposKey) {
-    const slotId = store.addPositionSlot(project.id, folder.id, baseposKey)
+  function handleAddSlot(posKey) {
+    const slotId = uid()
+    const existing = extraSlots.filter(s => s.posKey === posKey).length
+    const label = `${POS_LABELS[posKey]} ${existing + 2}`
+    setExtraSlots(prev => [...prev, { id: slotId, posKey, label }])
     setActiveSlotId(slotId)
   }
 
+  function handleRemoveSlot(slotId) {
+    setExtraSlots(prev => prev.filter(s => s.id !== slotId))
+    const slot = extraSlots.find(s => s.id === slotId)
+    setActiveSlotId(slot ? slot.posKey : 'primero')
+  }
+
   function handlePayrollSave(payroll) {
-    // Snapshot current production rows into the payroll so they're preserved permanently
-    const payrollWithRows = { ...payroll, rows: folder.rows }
+    // Snapshot current production rows + active extra slots into the payroll
+    const payrollWithRows = { ...payroll, rows: folder.rows, extraSlots }
     store.savePayroll(project.id, folder.id, payrollWithRows)
     setDraft(payrollWithRows)
     setSavedMsg(true)
@@ -358,7 +368,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
                 >
                   {slot.label}
                   {!slot.base && (
-                    <span className={s.slotClose} onClick={e => { e.stopPropagation(); store.removePositionSlot(project.id, folder.id, slot.id); setActiveSlotId(slot.posKey) }}>×</span>
+                    <span className={s.slotClose} onClick={e => { e.stopPropagation(); handleRemoveSlot(slot.id) }}>×</span>
                   )}
                 </button>
                 {slot.base && (

@@ -102,14 +102,6 @@ function treeUpdate(folders, fid, fn) {
   })
 }
 
-const POS_LABELS = { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
-
-function normalizeRowsObj(rows) {
-  if (!rows) return { primero: [], segundo: [], tercero: [] }
-  if (Array.isArray(rows)) return { primero: rows, segundo: [], tercero: [] }
-  return { primero: [], segundo: [], tercero: [], ...rows }
-}
-
 // ── Module state ──────────────────────────────────────────────────────────────
 
 let _data = load()
@@ -223,37 +215,6 @@ export function useStore() {
     }))
   }
 
-  function addPositionSlot(pid, fid, posKey) {
-    const slotId = uid()
-    commit(_data.map(p => p.id !== pid ? p : {
-      ...p,
-      folders: treeUpdate(p.folders || [], fid, f => {
-        const existing = (f.extraSlots || []).filter(s => s.posKey === posKey).length
-        const num = existing + 2
-        return {
-          ...f,
-          extraSlots: [...(f.extraSlots || []), { id: slotId, posKey, label: `${POS_LABELS[posKey]} ${num}` }],
-        }
-      }),
-    }))
-    return slotId
-  }
-
-  function removePositionSlot(pid, fid, slotId) {
-    commit(_data.map(p => p.id !== pid ? p : {
-      ...p,
-      folders: treeUpdate(p.folders || [], fid, f => {
-        const rows = normalizeRowsObj(f.rows)
-        delete rows[slotId]
-        return {
-          ...f,
-          extraSlots: (f.extraSlots || []).filter(s => s.id !== slotId),
-          rows,
-        }
-      }),
-    }))
-  }
-
   // ── Folder rows ──────────────────────────────────────────────────────────────
 
   function _normalizeRows(rows) {
@@ -295,11 +256,9 @@ export function useStore() {
   function clearFolderRows(pid, fid) {
     commit(_data.map(p => {
       if (p.id !== pid) return p
-      return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
-        const extraKeys = {}
-        ;(f.extraSlots || []).forEach(s => { extraKeys[s.id] = [] })
-        return { ...f, rows: { primero: [], segundo: [], tercero: [], ...extraKeys } }
-      })}
+      return { ...p, folders: treeUpdate(p.folders || [], fid, f => ({
+        ...f, rows: { primero: [], segundo: [], tercero: [] },
+      }))}
     }))
   }
 
@@ -377,7 +336,7 @@ export function useStore() {
     data,
     createProject, deleteProject,
     updateProjectColumns, updateProjectItems,
-    createFolder, deleteFolder, addPositionSlot, removePositionSlot,
+    createFolder, deleteFolder,
     addFolderRow, updateFolderRow, deleteFolderRow, clearFolderRows,
     savePayroll, deletePayroll,
     saveFolderSummary,
