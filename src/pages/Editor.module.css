@@ -187,6 +187,40 @@
   gap: 6px; padding: 32px; color: #bbb; font-size: 13px; text-align: center;
 }
 
+/* Panel full width (when opposite is hidden) */
+.panelFull { width: 100% !important; }
+
+/* Panel toggle button (in title bar) */
+.panelToggleBtn {
+  background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 5px;
+  padding: 2px 9px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.45);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.panelToggleBtn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+
+/* Payroll panel header (mirrors panelTitle style) */
+.payrollPanelTitle {
+  padding: 8px 14px; font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.6px; color: #aaa;
+  background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.payrollPanelTitle .panelToggleBtn {
+  border-color: #e0e0e0; color: #bbb;
+}
+.payrollPanelTitle .panelToggleBtn:hover { border-color: #3949ab; color: #3949ab; }
+
+/* Reveal tab — visible when a panel is collapsed */
+.revealBtn {
+  writing-mode: vertical-rl; text-orientation: mixed;
+  background: #1a1a2e; color: rgba(255,255,255,0.5); border: none;
+  width: 24px; flex-shrink: 0; cursor: pointer;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.revealBtn:hover { background: #2c2c4a; color: #fff; }
+
 /* Right panel */
 .rightPanel { width: 48%; overflow-y: auto; background: #fff; position: relative; }
 

@@ -310,6 +310,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [showPrintPick, setShowPrintPick] = useState(false)
   const [showPrint,     setShowPrint]     = useState(false)
   const [draft,        setDraft]        = useState(editPayroll || null)
+  const [showLeft,     setShowLeft]     = useState(true)
+  const [showRight,    setShowRight]    = useState(true)
 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
   const posKey = activeSlot.posKey
@@ -359,7 +361,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
 
       <div className={s.body}>
         {/* Left: per-position data table */}
-        <div className={s.leftPanel}>
+        {showLeft && <div className={`${s.leftPanel} ${!showRight ? s.panelFull : ''}`}>
           {/* Position tabs */}
           <div className={s.posTabs}>
             {slots.map(slot => (
@@ -383,6 +385,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           <div className={s.panelTitle}>
             <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
             <div className={s.addBtnGroup}>
+              <button className={s.panelToggleBtn} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
               <button
                 className={`${s.addAllBtn} ${addTwo ? s.addAllBtnOn : ''}`}
                 onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
@@ -415,11 +418,20 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             addTwo={addTwo}
             all2Target={all2Target}
           />
-        </div>
+        </div>}
+
+        {/* Show-left button when left is hidden */}
+        {!showLeft && (
+          <button className={s.revealBtn} onClick={() => setShowLeft(true)} title="Show production data">▶ Data</button>
+        )}
 
         {/* Right: payroll builder */}
-        <div className={s.rightPanel}>
+        {showRight && <div className={`${s.rightPanel} ${!showLeft ? s.panelFull : ''}`}>
           {savedMsg && <div className={s.savedBanner}>✓ Saved to {folder.name}!</div>}
+          <div className={s.payrollPanelTitle}>
+            <span>Payroll Builder</span>
+            <button className={s.panelToggleBtn} onClick={() => setShowRight(false)} title="Hide payroll">Hide ▶</button>
+          </div>
           <PayrollBuilder
             config={{ items: project.items || [] }}
             editPayroll={draft}
@@ -431,7 +443,12 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             onSave={handlePayrollSave}
             onClose={null}
           />
-        </div>
+        </div>}
+
+        {/* Show-right button when right is hidden */}
+        {!showRight && (
+          <button className={s.revealBtn} style={{ marginLeft: 'auto' }} onClick={() => setShowRight(true)} title="Show payroll">◀ Payroll</button>
+        )}
       </div>
 
       {showPrintPick && (
