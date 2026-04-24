@@ -385,7 +385,6 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           <div className={s.panelTitle}>
             <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
             <div className={s.addBtnGroup}>
-              <button className={s.panelToggleBtn} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
               <button
                 className={`${s.addAllBtn} ${addTwo ? s.addAllBtnOn : ''}`}
                 onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
@@ -407,6 +406,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
                 title="Add new rows to all 3 positions"
               >{addAll ? '● All 3' : '○ All 3'}</button>
             </div>
+            <button className={s.panelToggleBtnLight} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
           </div>
           <DataTable
             key={activeSlotId}
@@ -430,7 +430,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           {savedMsg && <div className={s.savedBanner}>✓ Saved to {folder.name}!</div>}
           <div className={s.payrollPanelTitle}>
             <span>Payroll Builder</span>
-            <button className={s.panelToggleBtn} onClick={() => setShowRight(false)} title="Hide payroll">Hide ▶</button>
+            <button className={s.panelToggleBtnLight} onClick={() => setShowRight(false)} title="Hide payroll">Hide ▶</button>
           </div>
           <PayrollBuilder
             config={{ items: project.items || [] }}

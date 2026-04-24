@@ -198,6 +198,14 @@
 }
 .panelToggleBtn:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
 
+/* Light background variant (used in panelTitle which has white bg) */
+.panelToggleBtnLight {
+  background: none; border: 1px solid #e0e0e0; border-radius: 5px;
+  padding: 2px 9px; font-size: 10px; font-weight: 700; color: #bbb;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.panelToggleBtnLight:hover { border-color: #3949ab; color: #3949ab; }
+
 /* Payroll panel header (mirrors panelTitle style) */
 .payrollPanelTitle {
   padding: 8px 14px; font-size: 10px; font-weight: 800;
