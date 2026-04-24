@@ -28,13 +28,16 @@ function scheduleSync() {
   clearTimeout(syncTimer)
   syncTimer = setTimeout(async () => {
     try {
-      await supabase.from('payroll_manager_state').upsert({
+      const { error } = await supabase.from('payroll_manager_state').upsert({
         id: SYNC_ROW_ID,
         data: { projects: _data, crews: _crews },
         updated_at: new Date().toISOString(),
       })
+      if (error) throw error
+      notifySync('ok')
     } catch (e) {
       console.warn('Supabase sync failed', e)
+      notifySync('error')
     }
   }, 1500)
 }
@@ -114,14 +117,30 @@ export function getData() { return _data }
 function notify() { _listeners.forEach(fn => fn([..._data])) }
 function notifyCrews() { _crewListeners.forEach(fn => fn([..._crews])) }
 
+// ── Sync status ───────────────────────────────────────────────────────────────
+
+let _syncStatus = 'pending'   // 'pending' | 'ok' | 'error'
+let _syncListeners = []
+function notifySync(s) { _syncStatus = s; _syncListeners.forEach(fn => fn(s)) }
+export function useSyncStatus() {
+  const [status, setStatus] = useState(_syncStatus)
+  useEffect(() => {
+    _syncListeners.push(setStatus)
+    return () => { _syncListeners = _syncListeners.filter(f => f !== setStatus) }
+  }, [])
+  return status
+}
+
 // On module load: pull from Supabase; handles both old (array) and new ({ projects, crews }) format
 ;(async () => {
   try {
-    const { data: row } = await supabase
+    const { data: row, error } = await supabase
       .from('payroll_manager_state')
       .select('data')
       .eq('id', SYNC_ROW_ID)
       .single()
+
+    if (error && error.code !== 'PGRST116') throw error  // PGRST116 = no rows found (ok)
 
     if (row?.data) {
       const remote = row.data
@@ -136,15 +155,15 @@ function notifyCrews() { _crewListeners.forEach(fn => fn([..._crews])) }
         notify()
         notifyCrews()
       } else {
-        // Table row exists but is empty — push local up
         scheduleSync()
       }
     } else {
-      // No row at all — push local up if we have anything
       if (_data.length > 0 || _crews.length > 0) scheduleSync()
     }
+    notifySync('ok')
   } catch (e) {
     console.warn('Supabase initial load failed', e)
+    notifySync('error')
   }
 })()
 

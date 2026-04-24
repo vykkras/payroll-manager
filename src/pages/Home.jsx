@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { uid, loadProjectDefaults, saveProjectDefaults } from '../store/useStore'
+import { uid, loadProjectDefaults, saveProjectDefaults, useSyncStatus } from '../store/useStore'
 import { TEMPLATES } from '../data/templates'
 import Modal from '../components/Modal'
 import s from './Home.module.css'
@@ -23,6 +23,7 @@ function stepLabel(step) {
 }
 
 export default function Home({ store, onOpenProject }) {
+  const syncStatus = useSyncStatus()
   const [showModal, setShowModal] = useState(false)
   const [step, setStep]           = useState('template')
   const [tplId, setTplId]         = useState(null)
@@ -154,6 +155,11 @@ export default function Home({ store, onOpenProject }) {
       <header className={s.header}>
         <div className={s.logo}>DC <span>Cable</span></div>
         <span className={s.headerSub}>Payroll Manager</span>
+        <span
+          className={s.syncDot}
+          style={{ background: syncStatus === 'ok' ? '#2e7d32' : syncStatus === 'error' ? '#c0392b' : '#aaa' }}
+          title={syncStatus === 'ok' ? 'Synced to cloud' : syncStatus === 'error' ? 'Sync failed — check Supabase' : 'Connecting…'}
+        />
       </header>
 
       <main className={s.main}>
