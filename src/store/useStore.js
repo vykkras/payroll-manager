@@ -37,7 +37,7 @@ function scheduleSync() {
       notifySync('ok')
     } catch (e) {
       console.warn('Supabase sync failed', e)
-      notifySync('error')
+      notifySync('error', e?.message || e?.code || String(e))
     }
   }, 1500)
 }
@@ -120,15 +120,18 @@ function notifyCrews() { _crewListeners.forEach(fn => fn([..._crews])) }
 // ── Sync status ───────────────────────────────────────────────────────────────
 
 let _syncStatus = 'pending'   // 'pending' | 'ok' | 'error'
+let _syncError  = ''
 let _syncListeners = []
-function notifySync(s) { _syncStatus = s; _syncListeners.forEach(fn => fn(s)) }
+function notifySync(s, err = '') { _syncStatus = s; _syncError = err; _syncListeners.forEach(fn => fn(s, err)) }
 export function useSyncStatus() {
   const [status, setStatus] = useState(_syncStatus)
+  const [error,  setError]  = useState(_syncError)
   useEffect(() => {
-    _syncListeners.push(setStatus)
-    return () => { _syncListeners = _syncListeners.filter(f => f !== setStatus) }
+    const fn = (s, e) => { setStatus(s); setError(e) }
+    _syncListeners.push(fn)
+    return () => { _syncListeners = _syncListeners.filter(f => f !== fn) }
   }, [])
-  return status
+  return { status, error }
 }
 
 // On module load: pull from Supabase; handles both old (array) and new ({ projects, crews }) format
@@ -163,7 +166,7 @@ export function useSyncStatus() {
     notifySync('ok')
   } catch (e) {
     console.warn('Supabase initial load failed', e)
-    notifySync('error')
+    notifySync('error', e?.message || e?.code || String(e))
   }
 })()
 

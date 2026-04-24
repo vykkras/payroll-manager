@@ -23,7 +23,7 @@ function stepLabel(step) {
 }
 
 export default function Home({ store, onOpenProject }) {
-  const syncStatus = useSyncStatus()
+  const { status: syncStatus, error: syncError } = useSyncStatus()
   const [showModal, setShowModal] = useState(false)
   const [step, setStep]           = useState('template')
   const [tplId, setTplId]         = useState(null)
@@ -158,8 +158,11 @@ export default function Home({ store, onOpenProject }) {
         <span
           className={s.syncDot}
           style={{ background: syncStatus === 'ok' ? '#2e7d32' : syncStatus === 'error' ? '#c0392b' : '#aaa' }}
-          title={syncStatus === 'ok' ? 'Synced to cloud' : syncStatus === 'error' ? 'Sync failed — check Supabase' : 'Connecting…'}
+          title={syncStatus === 'ok' ? 'Synced to cloud' : syncStatus === 'error' ? `Sync failed: ${syncError}` : 'Connecting…'}
         />
+        {syncStatus === 'error' && (
+          <span className={s.syncErr}>Sync failed: {syncError}</span>
+        )}
       </header>
 
       <main className={s.main}>
