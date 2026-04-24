@@ -106,7 +106,10 @@
 .rowNumHead { width: 28px; text-align: center !important; }
 .rowNum { width: 28px; text-align: center; font-size: 10px; color: #ccc; padding: 0 4px !important; user-select: none; }
 .rowAlt td { background: #f8f9fb; }
-.table tbody td { padding: 0; border-bottom: 1px solid #f0f0f0; color: #333; }
+.table tbody td { padding: 0; border-bottom: 1px solid #e8e8e8; border-right: 1px solid #e8e8e8; color: #333; }
+.table tbody td:first-child { border-left: 1px solid #e8e8e8; }
+.table thead th { border-right: 1px solid rgba(255,255,255,0.1); }
+.table thead th:first-child { border-left: 1px solid rgba(255,255,255,0.1); }
 .cellTd { padding: 0 !important; position: relative; }
 .dragHandle {
   position: absolute; bottom: 2px; right: 2px;
@@ -164,8 +167,13 @@
 }
 .addRowSubmit:hover { background: #283593; }
 
-/* Totals footer */
-.totalsRow td { background: #f0f4ff; font-weight: 700; font-size: 12px; padding: 8px 10px; border-top: 2px solid #c5cae9; }
+/* Totals footer — sticky at bottom of scroll area */
+.totalsRow td {
+  background: #e8eaf6; font-weight: 700; font-size: 12px; padding: 8px 10px;
+  border-top: 2px solid #c5cae9; border-bottom: 1px solid #c5cae9; border-right: 1px solid #c5cae9;
+  position: sticky; bottom: 0; z-index: 2;
+}
+.totalsRow td:first-child { border-left: 1px solid #c5cae9; }
 .totalVal { color: #1a1a2e; font-variant-numeric: tabular-nums; }
 
 /* Table footer */
