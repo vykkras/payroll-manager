@@ -122,6 +122,15 @@
   font-size: 9px; color: #bbb; border-top: 1px solid #eee; padding-top: 8px;
 }
 
+@media (max-width: 700px) {
+  .toolbar { padding: 0 12px; height: 44px; }
+  .toolbarTitle { font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btnPrint { padding: 6px 14px; font-size: 12px; }
+  .btnClose { padding: 6px 10px; font-size: 12px; }
+  .pageWrap { padding: 10px; overflow-x: auto; justify-content: flex-start; }
+  .page { min-width: 816px; }
+}
+
 /* ── Print media — only the .page renders, nothing else ── */
 @media print {
   .overlay {
