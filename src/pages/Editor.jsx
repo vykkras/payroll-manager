@@ -96,14 +96,33 @@ function DataGrid({ store, project, folder, position }) {
     store.setFolderRows(project.id, folder.id, { ...base, [position]: nonEmpty })
   }
 
+  function focusCell(tbody, rowIdx, colIdx) {
+    const rows = tbody?.querySelectorAll('tr')
+    const inputs = rows?.[rowIdx]?.querySelectorAll('input')
+    const input = inputs?.[colIdx]
+    if (input) { input.focus(); input.select() }
+  }
+
   function handleKeyDown(e, rowIdx, colIdx) {
-    if (e.key === 'Enter') {
+    const tbody = e.target.closest('tbody')
+    const { selectionStart, selectionEnd, value } = e.target
+    const atStart = selectionStart === 0 && selectionEnd === 0
+    const atEnd   = selectionStart === value.length && selectionEnd === value.length
+
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault()
-      const nextRowIdx = rowIdx + 1
-      if (nextRowIdx < GRID_ROWS) {
-        const tds = e.target.closest('tbody')?.querySelectorAll('tr')
-        tds?.[nextRowIdx]?.querySelectorAll('input')?.[colIdx]?.focus()
-      }
+      if (rowIdx + 1 < GRID_ROWS) focusCell(tbody, rowIdx + 1, colIdx)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (rowIdx > 0) focusCell(tbody, rowIdx - 1, colIdx)
+    } else if (e.key === 'ArrowLeft' && atStart) {
+      e.preventDefault()
+      if (colIdx > 0) focusCell(tbody, rowIdx, colIdx - 1)
+      else if (rowIdx > 0) focusCell(tbody, rowIdx - 1, columns.length - 1)
+    } else if (e.key === 'ArrowRight' && atEnd) {
+      e.preventDefault()
+      if (colIdx < columns.length - 1) focusCell(tbody, rowIdx, colIdx + 1)
+      else if (rowIdx + 1 < GRID_ROWS) focusCell(tbody, rowIdx + 1, 0)
     }
   }
 
