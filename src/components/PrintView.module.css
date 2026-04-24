@@ -137,6 +137,8 @@
   .page { min-width: 816px; }
 }
 
+.tableScroll { overflow-x: auto; max-width: 100%; }
+
 /* ── Print media — only the .page renders, nothing else ── */
 @media print {
   .overlay {
@@ -157,4 +159,5 @@
     padding: 12mm 16mm !important;
   }
   .pageFooter { position: static; margin-top: 24px; }
+  .tableScroll { overflow-x: visible; }
 }

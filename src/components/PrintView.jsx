@@ -305,29 +305,31 @@ export default function PrintView({ project, folder, slot, payroll, onClose }) {
             })
             const hasSums = Object.keys(sumCols).length > 0
             return (
-              <table className={s.table}>
-                <thead>
-                  <tr>{columns.map(c => <th key={c.id}>{c.name}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={row.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
-                      {columns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
-                    </tr>
-                  ))}
-                </tbody>
-                {hasSums && (
-                  <tfoot>
-                    <tr>
-                      {columns.map(c => (
-                        <td key={c.id} className={s.sumCell}>
-                          {sumCols[c.id] !== undefined ? Number(sumCols[c.id]).toLocaleString('en-US') : ''}
-                        </td>
-                      ))}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
+              <div className={s.tableScroll}>
+                <table className={s.table}>
+                  <thead>
+                    <tr>{columns.map(c => <th key={c.id}>{c.name}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={row.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
+                        {columns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                  {hasSums && (
+                    <tfoot>
+                      <tr>
+                        {columns.map(c => (
+                          <td key={c.id} className={s.sumCell}>
+                            {sumCols[c.id] !== undefined ? Number(sumCols[c.id]).toLocaleString('en-US') : ''}
+                          </td>
+                        ))}
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
             )
           })()}
 
