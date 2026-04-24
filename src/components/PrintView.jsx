@@ -2,43 +2,51 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import s from './PrintView.module.css'
 
-const POS_LABEL = { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
+const POS_IDX   = { primero: '1',       segundo: '2',       tercero: '3'       }
 
 function fmtMoney(n) {
   if (n == null || n === '') return '—'
   return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function normalizeRows(rows, pos) {
+function normalizeRows(rows, key) {
   if (!rows) return []
-  if (Array.isArray(rows)) return pos === 'primero' ? rows : []
-  return rows[pos] || []
+  if (Array.isArray(rows)) return key === 'primero' ? rows : []
+  return rows[key] || []
 }
 
-export default function PrintView({ project, folder, position, payroll, onClose }) {
-  const posIdx   = { primero: '1', segundo: '2', tercero: '3' }[position]
-  const label    = POS_LABEL[position]
-  const color    = POS_COLOR[position]
+// slot: { id, posKey, label, color, base }
+export default function PrintView({ project, folder, slot, payroll, onClose }) {
+  const posIdx  = POS_IDX[slot.posKey]
+  const label   = slot.label
+  const color   = slot.color || POS_COLOR[slot.posKey] || '#3949ab'
+  const isExtra = !slot.base
 
-  const crewName = payroll?.crewNames?.[position] || '—'
-  const period   = payroll?.period || '—'
-  // Support both per-position object and legacy flat array
-  const rawDisc  = payroll?.discounts
-  const discounts = Array.isArray(rawDisc) ? rawDisc : (rawDisc?.[position] || [])
-  const subtotal     = payroll?.[`subtotal${posIdx}`] || 0
-  const total        = payroll?.[`total${posIdx}`] || 0
+  const crewName  = payroll?.crewNames?.[slot.id] || '—'
+  const period    = payroll?.period || '—'
+
+  const rawDisc   = payroll?.discounts
+  const discounts = Array.isArray(rawDisc) ? rawDisc : (rawDisc?.[slot.id] || [])
+
+  let subtotal, total
+  if (isExtra) {
+    subtotal = (payroll?.items || []).reduce((sum, it) => sum + (it.extraSlots?.[slot.id]?.amt || 0), 0)
+    const disc = discounts.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+    total = subtotal - disc
+  } else {
+    subtotal = payroll?.[`subtotal${posIdx}`] || 0
+    total    = payroll?.[`total${posIdx}`]    || 0
+  }
 
   const columns = project.columns || []
-  const rows    = normalizeRows(payroll?.rows ?? folder.rows, position)
+  const rows    = normalizeRows(payroll?.rows ?? folder.rows, slot.id)
 
   const activeItems = (payroll?.items || []).filter(it => {
-    const q = it[`qty${posIdx}`]
+    const q = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
     return q !== '' && q !== undefined && q !== null && parseFloat(q) !== 0
   })
 
-  // Add/remove body class so @media print hides #root
-  // Also set document.title so the browser uses it as the PDF filename
   useEffect(() => {
     const prevTitle = document.title
     const safePeriod = (period || '').replace(/[/\\:*?"<>|]/g, '-').trim() || 'no-period'
@@ -52,7 +60,6 @@ export default function PrintView({ project, folder, position, payroll, onClose 
 
   const content = (
     <div className={s.overlay}>
-      {/* Toolbar — hidden when printing */}
       <div className={s.toolbar}>
         <div className={s.toolbarLeft}>
           <span className={s.toolbarTitle}>{label} — {project.name} / {folder.name}</span>
@@ -63,7 +70,6 @@ export default function PrintView({ project, folder, position, payroll, onClose 
         </div>
       </div>
 
-      {/* Scrollable preview area */}
       <div className={s.pageWrap}>
         <div className={s.page}>
 
@@ -101,16 +107,20 @@ export default function PrintView({ project, folder, position, payroll, onClose 
                 </tr>
               </thead>
               <tbody>
-                {activeItems.map((it, i) => (
-                  <tr key={it.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
-                    <td className={s.tdCode}>{it.code || '—'}</td>
-                    <td>{it.label}</td>
-                    <td className={s.tdCenter}>{it.unit || '—'}</td>
-                    <td className={s.tdRight}>{it[`qty${posIdx}`]}</td>
-                    <td className={s.tdRight}>{fmtMoney(it[`rate${posIdx}`])}</td>
-                    <td className={s.tdRight}>{fmtMoney(it[`amt${posIdx}`])}</td>
-                  </tr>
-                ))}
+                {activeItems.map((it, i) => {
+                  const qty = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
+                  const amt = isExtra ? it.extraSlots?.[slot.id]?.amt : it[`amt${posIdx}`]
+                  return (
+                    <tr key={it.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
+                      <td className={s.tdCode}>{it.code || '—'}</td>
+                      <td>{it.label}</td>
+                      <td className={s.tdCenter}>{it.unit || '—'}</td>
+                      <td className={s.tdRight}>{qty}</td>
+                      <td className={s.tdRight}>{fmtMoney(it[`rate${posIdx}`])}</td>
+                      <td className={s.tdRight}>{fmtMoney(amt)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}

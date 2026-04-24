@@ -304,11 +304,11 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
 
   const segundoSlots = slots.filter(s => s.posKey === 'segundo')
   const showAll2Target = segundoSlots.length > 1
-  const [savedMsg,     setSavedMsg]     = useState(false)
-  const [showClear,    setShowClear]    = useState(false)
-  const [printPos,     setPrintPos]     = useState('primero')
+  const [savedMsg,      setSavedMsg]      = useState(false)
+  const [showClear,     setShowClear]     = useState(false)
+  const [printSlot,     setPrintSlot]     = useState(null)
   const [showPrintPick, setShowPrintPick] = useState(false)
-  const [showPrint,    setShowPrint]    = useState(false)
+  const [showPrint,     setShowPrint]     = useState(false)
   const [draft,        setDraft]        = useState(editPayroll || null)
 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
@@ -353,7 +353,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           <span className={s.sep}>/</span>
           <span>{folder.name}</span>
         </div>
-        <button className={s.printBtn} onClick={() => { setPrintPos(posKey); setShowPrintPick(true) }}>🖨 Print</button>
+        <button className={s.printBtn} onClick={() => { setPrintSlot(activeSlot); setShowPrintPick(true) }}>🖨 Print</button>
         <button className={s.clearBtn} onClick={() => setShowClear(true)}>⊘ Clear All</button>
       </header>
 
@@ -437,17 +437,13 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
       {showPrintPick && (
         <Modal title="Print — select position" onClose={() => setShowPrintPick(false)}>
           <div className={s.printPosRow}>
-            {[
-              { key: 'primero', label: 'Primero', color: '#3949ab' },
-              { key: 'segundo', label: 'Segundo', color: '#2e7d32' },
-              { key: 'tercero', label: 'Tercero', color: '#e65100' },
-            ].map(p => (
+            {slots.map(slot => (
               <button
-                key={p.key}
-                className={`${s.printPosBtn} ${printPos === p.key ? s.printPosBtnOn : ''}`}
-                style={printPos === p.key ? { background: p.color, borderColor: p.color } : {}}
-                onClick={() => setPrintPos(p.key)}
-              >{p.label}</button>
+                key={slot.id}
+                className={`${s.printPosBtn} ${printSlot?.id === slot.id ? s.printPosBtnOn : ''}`}
+                style={printSlot?.id === slot.id ? { background: slot.color, borderColor: slot.color } : {}}
+                onClick={() => setPrintSlot(slot)}
+              >{slot.label}</button>
             ))}
           </div>
           <div className={s.delFooter}>
@@ -468,11 +464,11 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
       )}
     </div>
 
-    {showPrint && (
+    {showPrint && printSlot && (
       <PrintView
         project={project}
         folder={folder}
-        position={printPos}
+        slot={printSlot}
         payroll={draft}
         onClose={() => setShowPrint(false)}
       />

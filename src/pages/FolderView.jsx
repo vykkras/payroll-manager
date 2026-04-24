@@ -34,7 +34,7 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
   const [delFolder,  setDelFolder]          = useState(null)
   const [delPayroll, setDelPayroll]         = useState(null)
   const [printPayroll, setPrintPayroll]     = useState(null)
-  const [printPos,     setPrintPos]         = useState('primero')
+  const [printSlot,    setPrintSlot]        = useState(null)
 
   // Summary
   const [showSummary, setShowSummary] = useState(false)
@@ -179,7 +179,8 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                       <button className={s.printPayrollBtn} onClick={e => {
                         e.stopPropagation()
                         setPrintPayroll(pr)
-                        setPrintPos(pr.position || 'primero')
+                        const defPos = pr.position || 'primero'
+                        setPrintSlot({ id: defPos, posKey: defPos, label: POS.find(p => p.key === defPos)?.label || defPos, color: POS_COLOR[defPos], base: true })
                       }}>🖨</button>
                       <button className={s.delBtn} onClick={e => { e.stopPropagation(); setDelPayroll(pr.id) }}>✕</button>
                     </div>
@@ -274,24 +275,29 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
         </Modal>
       )}
 
-      {printPayroll && (
+      {printPayroll && !printPayroll._printMode && (
         <Modal title="Print — select position" onClose={() => setPrintPayroll(null)}>
           <div className={s.printPosRow}>
             {POS.map(p => (
               <button
                 key={p.key}
-                className={`${s.printPosBtn} ${printPos === p.key ? s.printPosBtnOn : ''}`}
-                style={printPos === p.key ? { background: p.color, borderColor: p.color } : {}}
-                onClick={() => setPrintPos(p.key)}
+                className={`${s.printPosBtn} ${printSlot?.id === p.key ? s.printPosBtnOn : ''}`}
+                style={printSlot?.id === p.key ? { background: p.color, borderColor: p.color } : {}}
+                onClick={() => setPrintSlot({ id: p.key, posKey: p.key, label: p.label, color: p.color, base: true })}
               >{p.label}</button>
+            ))}
+            {(printPayroll.extraSlots || []).map(slot => (
+              <button
+                key={slot.id}
+                className={`${s.printPosBtn} ${printSlot?.id === slot.id ? s.printPosBtnOn : ''}`}
+                style={printSlot?.id === slot.id ? { background: POS_COLOR[slot.posKey], borderColor: POS_COLOR[slot.posKey] } : {}}
+                onClick={() => setPrintSlot({ ...slot, color: POS_COLOR[slot.posKey], base: false })}
+              >{slot.label}</button>
             ))}
           </div>
           <div className={s.footerBtns}>
             <button className={s.btnCancel} onClick={() => setPrintPayroll(null)}>Cancel</button>
-            <button className={s.btnOk} onClick={() => {
-              // PrintView will mount — close this modal
-              setPrintPayroll({ ...printPayroll, _printMode: true })
-            }}>Open Print Preview</button>
+            <button className={s.btnOk} onClick={() => setPrintPayroll({ ...printPayroll, _printMode: true })}>Open Print Preview</button>
           </div>
         </Modal>
       )}
@@ -328,11 +334,11 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
         </Modal>
       )}
 
-      {printPayroll?._printMode && (
+      {printPayroll?._printMode && printSlot && (
         <PrintView
           project={project}
           folder={folder}
-          position={printPos}
+          slot={printSlot}
           payroll={printPayroll}
           onClose={() => setPrintPayroll(null)}
         />
