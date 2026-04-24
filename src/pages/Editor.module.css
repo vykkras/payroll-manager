@@ -215,3 +215,7 @@
 .delMsg { font-size: 13px; color: #888; margin-bottom: 4px; }
 .delFooter { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .btnDel { background: #c0392b; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.printPosRow { display: flex; gap: 8px; margin-bottom: 4px; }
+.printPosBtn { background: #fff; border: 1px solid #e0e0e0; border-radius: 7px; padding: 8px 18px; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; }
+.printPosBtn:hover { border-color: #3949ab; color: #3949ab; }
+.printPosBtnOn { color: #fff !important; }
