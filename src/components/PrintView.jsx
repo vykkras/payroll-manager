@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import * as XLSX from 'xlsx'
 import s from './PrintView.module.css'
 
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
@@ -14,6 +15,61 @@ function normalizeRows(rows, key) {
   if (!rows) return []
   if (Array.isArray(rows)) return key === 'primero' ? rows : []
   return rows[key] || []
+}
+
+function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, crewName, period, activeItems, discounts, subtotal, total, columns, rows }) {
+  const wb = XLSX.utils.book_new()
+
+  // ── Payroll sheet ─────────────────────────────────────────────────────────
+  const payrollData = []
+  payrollData.push(['DC Cable — Payroll', '', '', '', '', ''])
+  payrollData.push([project.name, '', '', '', '', ''])
+  payrollData.push([folder.name, '', '', '', '', ''])
+  payrollData.push(['Position', slot.label, '', 'Period', period, ''])
+  payrollData.push(['Crew', crewName, '', '', '', ''])
+  payrollData.push([])
+  payrollData.push(['Code', 'Description', 'Unit', 'Qty', 'Rate', 'Amount'])
+
+  activeItems.forEach(it => {
+    const qty = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
+    const amt = isExtra ? it.extraSlots?.[slot.id]?.amt : it[`amt${posIdx}`]
+    const rate = it[`rate${posIdx}`]
+    payrollData.push([it.code || '', it.label, it.unit || '', parseFloat(qty) || 0, parseFloat(rate) || 0, parseFloat(amt) || 0])
+  })
+
+  payrollData.push([])
+  if (discounts.length > 0) {
+    payrollData.push(['', '', '', '', 'Subtotal', parseFloat(subtotal) || 0])
+    discounts.filter(d => d.label || d.amount).forEach(d => {
+      payrollData.push(['', '', '', '', d.label || 'Discount', -(parseFloat(d.amount) || 0)])
+    })
+  }
+  payrollData.push(['', '', '', '', `Total — ${slot.label}`, parseFloat(total) || 0])
+
+  const wsPayroll = XLSX.utils.aoa_to_sheet(payrollData)
+  wsPayroll['!cols'] = [{ wch: 10 }, { wch: 30 }, { wch: 8 }, { wch: 8 }, { wch: 14 }, { wch: 14 }]
+  XLSX.utils.book_append_sheet(wb, wsPayroll, 'Payroll')
+
+  // ── Production Data sheet ─────────────────────────────────────────────────
+  if (columns.length > 0 && rows.length > 0) {
+    const prodData = [columns.map(c => c.name)]
+    rows.forEach(row => prodData.push(columns.map(c => row[c.id] ?? '')))
+
+    // Sums row
+    const sums = columns.map(col => {
+      const nonempty = rows.filter(r => r[col.id] !== '' && r[col.id] != null)
+      const nums = nonempty.map(r => parseFloat(r[col.id]))
+      return nums.length > 0 && nums.every(n => !isNaN(n)) ? nums.reduce((a, b) => a + b, 0) : ''
+    })
+    prodData.push(sums)
+
+    const wsProd = XLSX.utils.aoa_to_sheet(prodData)
+    wsProd['!cols'] = columns.map(() => ({ wch: 14 }))
+    XLSX.utils.book_append_sheet(wb, wsProd, 'Production Data')
+  }
+
+  const safePeriod = (period || '').replace(/[/\\:*?"<>|]/g, '-').trim() || 'payroll'
+  XLSX.writeFile(wb, `${crewName}---${project.name}---${safePeriod}.xlsx`)
 }
 
 // slot: { id, posKey, label, color, base }
@@ -65,6 +121,7 @@ export default function PrintView({ project, folder, slot, payroll, onClose }) {
           <span className={s.toolbarTitle}>{label} — {project.name} / {folder.name}</span>
         </div>
         <div className={s.toolbarRight}>
+          <button className={s.btnExcel} onClick={() => downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, crewName, period, activeItems, discounts, subtotal, total, columns, rows })}>⬇ Excel</button>
           <button className={s.btnPrint} onClick={() => window.print()}>🖨 Print / Save PDF</button>
           <button className={s.btnClose} onClick={onClose}>✕ Close</button>
         </div>
