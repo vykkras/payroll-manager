@@ -109,3 +109,13 @@
 .btnOpenEditor:hover { background: #283593; }
 .btnOpenEditor:disabled { opacity: 0.4; cursor: not-allowed; }
 .savedMsg { text-align: center; color: #2e7d32; font-weight: 600; font-size: 14px; padding: 8px 0; }
+
+@media (max-width: 600px) {
+  .header { padding: 0 12px; gap: 8px; }
+  .logo { font-size: 13px; }
+  .breadcrumb { font-size: 12px; }
+  .btnOpenEditor { padding: 6px 10px; font-size: 11px; }
+  .subBtnsBar { padding: 8px 12px; }
+  .summaryPage { padding: 0 14px; }
+  .pickRow { grid-template-columns: 1fr; }
+}

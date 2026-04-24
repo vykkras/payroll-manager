@@ -131,3 +131,17 @@
 .checkRow { margin-bottom: 16px; }
 .checkLabel { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; cursor: pointer; }
 .checkLabel input { width: 15px; height: 15px; cursor: pointer; }
+
+@media (max-width: 600px) {
+  .header { padding: 0 14px; gap: 8px; }
+  .logo { font-size: 14px; }
+  .headerSub { display: none; }
+  .main { padding: 16px; }
+  .ph { flex-direction: column; gap: 10px; }
+  .ph h2 { font-size: 17px; }
+  .btnAdd { width: 100%; text-align: center; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rateRow { grid-template-columns: 1fr 1fr; }
+  .itemsHead { grid-template-columns: 60px 1fr 45px 60px 60px 60px 30px 50px; font-size: 9px; }
+  .itemRow  { grid-template-columns: 60px 1fr 45px 60px 60px 60px 30px 50px; }
+}

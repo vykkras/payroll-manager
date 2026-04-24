@@ -219,3 +219,22 @@
 .printPosBtn { background: #fff; border: 1px solid #e0e0e0; border-radius: 7px; padding: 8px 18px; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; }
 .printPosBtn:hover { border-color: #3949ab; color: #3949ab; }
 .printPosBtnOn { color: #fff !important; }
+
+@media (max-width: 768px) {
+  .page { height: auto; overflow: visible; }
+  .header { padding: 0 12px; gap: 8px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+  .logo { font-size: 13px; }
+  .breadcrumb { font-size: 12px; }
+  .printBtn, .clearBtn { padding: 4px 8px; font-size: 11px; }
+  .body { flex-direction: column; overflow: visible; height: auto; }
+  .leftPanel { width: 100%; border-right: none; border-bottom: 2px solid #e0e0e0; height: auto; overflow: visible; }
+  .tableWrap { height: auto; overflow: visible; }
+  .tableScroll { overflow-x: auto; height: auto; max-height: none; overflow-y: visible; }
+  .table { min-width: 480px; }
+  .rightPanel { width: 100%; overflow-y: visible; }
+  .posTabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+  .filterBar { overflow-x: auto; flex-wrap: nowrap; }
+  .rowFormGrid { grid-template-columns: 1fr 1fr; }
+  .printPosRow { flex-wrap: wrap; }
+  .printPosBtn { flex: 1 1 40%; }
+}

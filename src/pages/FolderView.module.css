@@ -194,3 +194,22 @@
   width: 100%; padding: 8px; font-size: 12px; color: #aaa; cursor: pointer; margin-bottom: 4px;
 }
 .summaryAddLine:hover { border-color: #3949ab; color: #3949ab; }
+
+@media (max-width: 600px) {
+  .header { padding: 0 12px; gap: 8px; height: auto; min-height: 52px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+  .logo { font-size: 13px; }
+  .breadcrumb { font-size: 12px; flex-wrap: wrap; }
+  .btnEditor, .btnSummary { padding: 5px 10px; font-size: 11px; }
+  .main { padding: 14px; }
+  .ph { flex-direction: column; gap: 10px; }
+  .ph h2 { font-size: 17px; }
+  .btnAdd { width: 100%; text-align: center; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .summaryGrid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .summaryBlockVal { font-size: 18px; }
+  .summaryBlockValPct { font-size: 20px; }
+  .summaryPanel { padding: 14px 16px; }
+  .payrollPosRow { flex-wrap: wrap; }
+  .printPosRow { flex-wrap: wrap; }
+  .printPosBtn { flex: 1 1 40%; }
+}
