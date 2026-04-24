@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { uid } from '../store/useStore'
 import PayrollBuilder from '../components/PayrollBuilder'
 import PrintView from '../components/PrintView'
@@ -46,137 +46,65 @@ function normalizeRows(rows) {
   return { primero: [], segundo: [], tercero: [], ...rows }
 }
 
-// ── Editable row ──────────────────────────────────────────────────────────────
-function EditableRow({ row, columns, onSave, onDelete, onDragStart, dragFill, onMouseEnter }) {
-  const [vals, setVals] = useState(() => {
-    const v = {}
-    columns.forEach(c => { v[c.id] = row[c.id] ?? '' })
-    return v
+// ── Data grid (fixed 30-row spreadsheet) ─────────────────────────────────────
+const GRID_ROWS = 30
+
+function initGrid(columns, folderRows, position) {
+  const existing = normalizeRows(folderRows)[position] || []
+  return Array.from({ length: GRID_ROWS }, (_, i) => {
+    const ex = existing[i]
+    const row = { id: ex?.id || uid() }
+    columns.forEach(c => { row[c.id] = ex?.[c.id] ?? '' })
+    return row
   })
-
-  useEffect(() => {
-    if (!dragFill) return
-    const next = { ...vals, [dragFill.colId]: dragFill.value }
-    setVals(next)
-    onSave({ ...row, ...next })
-  }, [dragFill])
-
-  function handleBlur(colId) {
-    const computed = evalFormula(vals[colId])
-    const finalVals = { ...vals, [colId]: computed }
-    if (computed !== vals[colId]) setVals(finalVals)
-    onSave({ ...row, ...finalVals })
-  }
-
-  return (
-    <tr className={s.dataRow} onMouseEnter={onMouseEnter}>
-      {columns.map(c => (
-        <td key={c.id} className={s.cellTd}>
-          <input
-            className={s.cellInput}
-            value={vals[c.id] ?? ''}
-            onChange={e => setVals(v => ({ ...v, [c.id]: e.target.value }))}
-            onBlur={() => handleBlur(c.id)}
-            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-          />
-          <span
-            className={s.dragHandle}
-            onMouseDown={e => { e.preventDefault(); onDragStart(c.id, vals[c.id]) }}
-          />
-        </td>
-      ))}
-      <td className={s.actionsCell}>
-        <button className={s.delRowBtn} onClick={onDelete}>✕</button>
-      </td>
-    </tr>
-  )
 }
 
-// ── Data table (per-position) ─────────────────────────────────────────────────
-function DataTable({ store, project, folder, position, addAll, addTwo, all2Target }) {
+function DataGrid({ store, project, folder, position }) {
   const columns = project.columns || []
-  const allRows  = normalizeRows(folder.rows)
-  const rows     = allRows[position] || []
 
-  const [filters,       setFilters]       = useState({})
-  const [newRow,        setNewRow]        = useState(() => {
-    const v = {}; columns.forEach(c => { v[c.id] = '' }); return v
-  })
-  const [delRowId,      setDelRowId]      = useState(null)
-  const [dragState,     setDragState]     = useState(null)   // { colId, value }
-  const [dragFilledRows, setDragFilledRows] = useState(() => new Set())
-
-  useEffect(() => {
-    if (!dragState) return
-    document.body.style.cursor = 'ns-resize'
-    document.body.style.userSelect = 'none'
-    function onMouseUp() {
-      setDragState(null)
-      setDragFilledRows(new Set())
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-    document.addEventListener('mouseup', onMouseUp)
-    return () => {
-      document.removeEventListener('mouseup', onMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [dragState])
-
-  function handleDragStart(colId, value) {
-    setDragState({ colId, value })
-    setDragFilledRows(new Set())
+  const [grid, setGridState] = useState(() => initGrid(columns, folder.rows, position))
+  const gridRef = useRef(grid)
+  function setGrid(updater) {
+    const next = typeof updater === 'function' ? updater(gridRef.current) : updater
+    gridRef.current = next
+    setGridState(next)
   }
-
-  function handleRowEnter(rowId) {
-    if (!dragState || dragFilledRows.has(rowId)) return
-    setDragFilledRows(prev => { const n = new Set(prev); n.add(rowId); return n })
-  }
-
-
-  const filterCols = columns.filter(c => c.filter)
-
-  const filterOptions = useMemo(() => {
-    const opts = {}
-    filterCols.forEach(col => {
-      const subset = rows.filter(row =>
-        Object.entries(filters).every(([cid, val]) =>
-          cid === col.id || !val || String(row[cid] ?? '') === val
-        )
-      )
-      const vals = [...new Set(subset.map(r => String(r[col.id] ?? '')).filter(Boolean))].sort()
-      if (vals.length >= 1) opts[col.id] = vals
-    })
-    return opts
-  }, [filterCols, rows, filters])
-
-  const filteredRows = useMemo(() =>
-    rows.filter(row =>
-      Object.entries(filters).every(([cid, val]) => !val || String(row[cid] ?? '') === val)
-    ), [rows, filters])
 
   const totals = useMemo(() => {
     const t = {}
     columns.forEach(col => {
-      const nonempty = filteredRows.filter(r => r[col.id] !== '' && r[col.id] != null)
-      if (nonempty.length === 0) return
-      const nums = nonempty.map(r => parseFloat(r[col.id]))
-      if (nums.every(n => !isNaN(n))) t[col.id] = nums.reduce((a, b) => a + b, 0)
+      const nums = grid.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
+      if (nums.length > 0) t[col.id] = nums.reduce((a, b) => a + b, 0)
     })
     return t
-  }, [columns, filteredRows])
+  }, [grid, columns])
 
-  const activeFilters = Object.values(filters).some(Boolean)
-  const showFilterBar = filterCols.length > 0 && rows.length > 0
+  function handleChange(rowIdx, colId, val) {
+    setGrid(prev => prev.map((r, i) => i === rowIdx ? { ...r, [colId]: val } : r))
+  }
 
-  function submitNewRow() {
-    if (!Object.values(newRow).some(v => String(v).trim())) return
-    const evaluated = {}
-    Object.entries(newRow).forEach(([k, v]) => { evaluated[k] = evalFormula(v) })
-    const targets = addAll ? ['primero', 'segundo', 'tercero'] : addTwo ? ['primero', all2Target || 'segundo'] : [position]
-    targets.forEach(pos => store.addFolderRow(project.id, folder.id, { id: uid(), ...evaluated }, pos))
-    const reset = {}; columns.forEach(c => { reset[c.id] = '' }); setNewRow(reset)
+  function handleBlur(rowIdx, colId) {
+    const current = gridRef.current
+    const val = current[rowIdx][colId]
+    const computed = evalFormula(val)
+    const finalGrid = computed !== val
+      ? current.map((r, i) => i === rowIdx ? { ...r, [colId]: computed } : r)
+      : current
+    if (computed !== val) setGrid(finalGrid)
+    const nonEmpty = finalGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+    const base = normalizeRows(folder.rows)
+    store.setFolderRows(project.id, folder.id, { ...base, [position]: nonEmpty })
+  }
+
+  function handleKeyDown(e, rowIdx, colIdx) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const nextRowIdx = rowIdx + 1
+      if (nextRowIdx < GRID_ROWS) {
+        const tds = e.target.closest('tbody')?.querySelectorAll('tr')
+        tds?.[nextRowIdx]?.querySelectorAll('input')?.[colIdx]?.focus()
+      }
+    }
   }
 
   if (columns.length === 0) {
@@ -192,103 +120,46 @@ function DataTable({ store, project, folder, position, addAll, addTwo, all2Targe
 
   return (
     <div className={s.tableWrap}>
-      {showFilterBar && (
-        <div className={s.filterBar}>
-          {filterCols.filter(c => filterOptions[c.id]).map(col => (
-            <div key={col.id} className={s.filterItem}>
-              <span className={s.filterLabel}>{col.name}</span>
-              <select
-                className={s.filterSelect}
-                value={filters[col.id] || ''}
-                onChange={e => setFilters(f => ({ ...f, [col.id]: e.target.value }))}
-              >
-                <option value="">All</option>
-                {filterOptions[col.id].map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </div>
-          ))}
-          {activeFilters && (
-            <button className={s.clearFilters} onClick={() => setFilters({})}>✕ Clear</button>
-          )}
-          <span className={s.rowCount}>{filteredRows.length}/{rows.length} rows</span>
-        </div>
-      )}
-
       <div className={s.tableScroll}>
         <table className={s.table}>
           <thead>
             <tr>
+              <th className={s.rowNumHead}>#</th>
               {columns.map(c => <th key={c.id}>{c.name}</th>)}
-              <th className={s.actionsHead}></th>
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map(row => (
-              <EditableRow
-                key={row.id}
-                row={row}
-                columns={columns}
-                onSave={updated => store.updateFolderRow(project.id, folder.id, updated, position)}
-                onDelete={() => setDelRowId(row.id)}
-                onDragStart={handleDragStart}
-                dragFill={dragFilledRows.has(row.id) && dragState ? dragState : null}
-                onMouseEnter={() => handleRowEnter(row.id)}
-              />
+            {grid.map((row, rowIdx) => (
+              <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''}`}>
+                <td className={s.rowNum}>{rowIdx + 1}</td>
+                {columns.map((c, colIdx) => (
+                  <td key={c.id} className={s.cellTd}>
+                    <input
+                      className={s.cellInput}
+                      value={row[c.id] ?? ''}
+                      onChange={e => handleChange(rowIdx, c.id, e.target.value)}
+                      onBlur={() => handleBlur(rowIdx, c.id)}
+                      onKeyDown={e => handleKeyDown(e, rowIdx, colIdx)}
+                    />
+                  </td>
+                ))}
+              </tr>
             ))}
-            <tr className={s.inlineAddRow}>
-              {columns.map((c, i) => (
-                <td key={c.id} className={s.inlineAddCell}>
-                  <input
-                    className={s.inlineAddInput}
-                    value={newRow[c.id] ?? ''}
-                    onChange={e => setNewRow(r => ({ ...r, [c.id]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && submitNewRow()}
-                    placeholder={c.name}
-                    autoFocus={i === 0 && rows.length === 0}
-                  />
-                </td>
-              ))}
-              <td className={s.actionsCell}>
-                <button className={s.addRowSubmit} onClick={submitNewRow} title="Add row (Enter)">+</button>
-              </td>
-            </tr>
           </tbody>
           {Object.keys(totals).length > 0 && (
             <tfoot>
               <tr className={s.totalsRow}>
+                <td />
                 {columns.map(c => (
                   <td key={c.id} className={totals[c.id] !== undefined ? s.totalVal : ''}>
                     {totals[c.id] !== undefined ? Number(totals[c.id]).toLocaleString('en-US') : ''}
                   </td>
                 ))}
-                <td />
               </tr>
             </tfoot>
           )}
         </table>
       </div>
-
-      {rows.length > 0 && (
-        <div className={s.tableFooter}>
-          <span className={s.totalNote}>
-            {rows.length} row{rows.length !== 1 ? 's' : ''}
-            {activeFilters ? ` · ${filteredRows.length} shown` : ''}
-          </span>
-        </div>
-      )}
-
-      {delRowId && (
-        <Modal title="Delete row?" onClose={() => setDelRowId(null)}>
-          <p className={s.delMsg}>This row will be permanently removed.</p>
-          <div className={s.delFooter}>
-            <button className={s.btnCancel} onClick={() => setDelRowId(null)}>Cancel</button>
-            <button className={s.btnDel} onClick={() => {
-              store.deleteFolderRow(project.id, folder.id, delRowId, position)
-              setDelRowId(null)
-            }}>Delete</button>
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }
@@ -298,12 +169,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [extraSlots, setExtraSlots] = useState(() => editPayroll?.extraSlots || [])
   const slots = buildSlots(extraSlots)
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
-  const [addAll,       setAddAll]       = useState(false)
-  const [addTwo,       setAddTwo]       = useState(false)
   const [all2Target,   setAll2Target]   = useState('segundo')
-
-  const segundoSlots = slots.filter(s => s.posKey === 'segundo')
-  const showAll2Target = segundoSlots.length > 1
+  const [clearKey,     setClearKey]     = useState(0)
   const [savedMsg,      setSavedMsg]      = useState(false)
   const [showClear,     setShowClear]     = useState(false)
   const [printSlot,     setPrintSlot]     = useState(null)
@@ -341,6 +208,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
 
   function handleClear() {
     store.clearFolderRows(project.id, folder.id)
+    setClearKey(k => k + 1)
     setShowClear(false)
   }
 
@@ -384,39 +252,14 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           </div>
           <div className={s.panelTitle}>
             <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
-            <div className={s.addBtnGroup}>
-              <button
-                className={`${s.addAllBtn} ${addTwo ? s.addAllBtnOn : ''}`}
-                onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
-                title="Add new rows to Primero + target"
-              >{addTwo ? '● All 2' : '○ All 2'}</button>
-              {showAll2Target && (
-                <select
-                  className={`${s.addAllBtn} ${s.targetSelect}`}
-                  value={all2Target}
-                  onChange={e => setAll2Target(e.target.value)}
-                  title="All 2 target slot"
-                >
-                  {segundoSlots.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              )}
-              <button
-                className={`${s.addAllBtn} ${addAll ? s.addAllBtnOn : ''}`}
-                onClick={() => { setAddAll(v => !v); setAddTwo(false) }}
-                title="Add new rows to all 3 positions"
-              >{addAll ? '● All 3' : '○ All 3'}</button>
-            </div>
             <button className={s.panelToggleBtnLight} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
           </div>
-          <DataTable
-            key={activeSlotId}
+          <DataGrid
+            key={activeSlotId + '-' + clearKey}
             store={store}
             project={project}
             folder={folder}
             position={activeSlotId}
-            addAll={addAll}
-            addTwo={addTwo}
-            all2Target={all2Target}
           />
         </div>}
 

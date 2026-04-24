@@ -103,6 +103,9 @@
   user-select: none;
 }
 .actionsHead { width: 36px; }
+.rowNumHead { width: 28px; text-align: center !important; }
+.rowNum { width: 28px; text-align: center; font-size: 10px; color: #ccc; padding: 0 4px !important; user-select: none; }
+.rowAlt td { background: #f8f9fb; }
 .table tbody td { padding: 0; border-bottom: 1px solid #f0f0f0; color: #333; }
 .cellTd { padding: 0 !important; position: relative; }
 .dragHandle {
