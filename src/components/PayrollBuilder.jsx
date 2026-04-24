@@ -32,6 +32,9 @@ function hydrateItems(configItems, savedItems) {
     const saved = savedItems?.find(sv => sv.code === it.code) || {}
     return {
       ...it,
+      rate1: saved.rate1 ?? it.rate1,
+      rate2: saved.rate2 ?? it.rate2,
+      rate3: saved.rate3 ?? it.rate3,
       qty1: saved.qty1 ?? '', qty2: saved.qty2 ?? '', qty3: saved.qty3 ?? '',
       amt1: saved.amt1 ?? 0,  amt2: saved.amt2 ?? 0,  amt3: saved.amt3 ?? 0,
       qty2manual: true,
