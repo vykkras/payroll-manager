@@ -1,16 +1,57 @@
 import { useState } from 'react'
-import { uid, useEmployees, useSyncStatus } from '../store/useStore'
+import { uid, useEmployees, useStore, useSyncStatus } from '../store/useStore'
 import Modal from '../components/Modal'
 import s from './Employees.module.css'
 
 const EMPTY_FORM = { name: '', phone: '', email: '', employeeId: '' }
+const BASE_POSITIONS = ['primero', 'segundo', 'tercero']
 
 function initials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2)
 }
 
+function fmtMoney(n) {
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Walk all projects → folders (recursively) → payrolls and collect stats for an employee name
+function collectStats(projects, employeeName) {
+  let total = 0
+  let count = 0
+
+  function walkFolders(folders) {
+    for (const folder of folders) {
+      for (const payroll of folder.payrolls || []) {
+        const crewNames = payroll.crewNames || {}
+        let payrollContribution = 0
+
+        // Base slots: primero/segundo/tercero totals are pre-computed on save
+        const baseNetMap = { primero: payroll.total1 || 0, segundo: payroll.total2 || 0, tercero: payroll.total3 || 0 }
+        BASE_POSITIONS.forEach(pos => {
+          if (crewNames[pos] === employeeName) payrollContribution += baseNetMap[pos]
+        })
+
+        // Extra slots: compute from items.extraSlots + discounts
+        Object.entries(crewNames).forEach(([slotId, name]) => {
+          if (BASE_POSITIONS.includes(slotId) || name !== employeeName) return
+          const sub  = (payroll.items || []).reduce((s, it) => s + (it.extraSlots?.[slotId]?.amt || 0), 0)
+          const disc = (payroll.discounts?.[slotId] || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
+          payrollContribution += sub - disc
+        })
+
+        if (payrollContribution !== 0) { total += payrollContribution; count++ }
+      }
+      walkFolders(folder.folders || [])
+    }
+  }
+
+  for (const project of projects) walkFolders(project.folders || [])
+  return { total, count }
+}
+
 export default function Employees({ section, onSectionChange }) {
   const { employees, saveEmployee, deleteEmployee } = useEmployees()
+  const { data: projects } = useStore()
   const { status: syncStatus, error: syncError } = useSyncStatus()
 
   const [search,    setSearch]    = useState('')
@@ -113,7 +154,9 @@ export default function Employees({ section, onSectionChange }) {
           </div>
         ) : (
           <div className={s.list}>
-            {filtered.map(emp => (
+            {filtered.map(emp => {
+              const { total, count } = collectStats(projects, emp.name)
+              return (
               <div key={emp.id} className={s.card}>
                 <div className={s.avatar}>{initials(emp.name || '?')}</div>
                 <div className={s.cardBody}>
@@ -124,12 +167,16 @@ export default function Employees({ section, onSectionChange }) {
                     {emp.email && <span>{emp.email}</span>}
                   </div>
                 </div>
+                <div className={s.cardStats}>
+                  <div className={s.statTotal}>{count > 0 ? fmtMoney(total) : '—'}</div>
+                  <div className={s.statLabel}>{count === 0 ? 'no payrolls' : count === 1 ? '1 payroll' : `${count} payrolls`}</div>
+                </div>
                 <div className={s.cardActions}>
                   <button className={s.editBtn} onClick={() => openEdit(emp)}>✏</button>
                   <button className={s.delBtn} onClick={() => setDelTarget(emp.id)}>✕</button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </main>

@@ -72,6 +72,10 @@
   padding: 2px 8px; border-radius: 4px;
 }
 
+.cardStats { text-align: right; flex-shrink: 0; margin-right: 4px; }
+.statTotal { font-size: 15px; font-weight: 800; color: #2e7d32; font-variant-numeric: tabular-nums; }
+.statLabel { font-size: 11px; color: #bbb; margin-top: 1px; }
+
 .cardActions { display: flex; gap: 6px; flex-shrink: 0; }
 .editBtn {
   background: none; border: 1px solid #e0e0e0; color: #888;
