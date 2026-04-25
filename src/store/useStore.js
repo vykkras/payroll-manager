@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 const KEY = 'payroll_manager_v2'
 const DEFAULTS_KEY = 'payroll_manager_defaults'
 const CREWS_KEY = 'dccable_crews'
+const EMPLOYEES_KEY = 'dccable_employees'
 const SYNC_ROW_ID = 'main'
 
 const supabase = createClient(
@@ -21,6 +22,11 @@ function loadCrewsLocal() {
 }
 function persistCrews(crews) { localStorage.setItem(CREWS_KEY, JSON.stringify(crews)) }
 
+function loadEmployeesLocal() {
+  try { return JSON.parse(localStorage.getItem(EMPLOYEES_KEY) || '[]') } catch { return [] }
+}
+function persistEmployees(emps) { localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(emps)) }
+
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
 let syncTimer = null
@@ -30,7 +36,7 @@ function scheduleSync() {
     try {
       const { error } = await supabase.from('payroll_manager_state').upsert({
         id: SYNC_ROW_ID,
-        data: { projects: _data, crews: _crews },
+        data: { projects: _data, crews: _crews, employees: _employees },
         updated_at: new Date().toISOString(),
       })
       if (error) throw error
@@ -111,11 +117,14 @@ let _data = load()
 let _listeners = []
 let _crews = loadCrewsLocal()
 let _crewListeners = []
+let _employees = loadEmployeesLocal()
+let _employeeListeners = []
 
 export function getData() { return _data }
 
 function notify() { _listeners.forEach(fn => fn([..._data])) }
 function notifyCrews() { _crewListeners.forEach(fn => fn([..._crews])) }
+function notifyEmployees() { _employeeListeners.forEach(fn => fn([..._employees])) }
 
 // ── Sync status ───────────────────────────────────────────────────────────────
 
@@ -147,16 +156,20 @@ export function useSyncStatus() {
 
     if (row?.data) {
       const remote = row.data
-      const projects = Array.isArray(remote) ? remote : (remote.projects || [])
-      const crews    = Array.isArray(remote) ? []      : (remote.crews    || [])
+      const projects   = Array.isArray(remote) ? remote : (remote.projects   || [])
+      const crews      = Array.isArray(remote) ? []      : (remote.crews      || [])
+      const employees  = Array.isArray(remote) ? []      : (remote.employees  || [])
 
-      if (projects.length > 0 || crews.length > 0) {
-        _data  = projects
-        _crews = crews
+      if (projects.length > 0 || crews.length > 0 || employees.length > 0) {
+        _data      = projects
+        _crews     = crews
+        _employees = employees
         persist(_data)
         persistCrews(_crews)
+        persistEmployees(_employees)
         notify()
         notifyCrews()
+        notifyEmployees()
       } else {
         scheduleSync()
       }
@@ -388,5 +401,35 @@ export function useCrews() {
     crews,
     saveCrew:   (crew) => commitCrews([..._crews, crew]),
     deleteCrew: (id)   => commitCrews(_crews.filter(c => c.id !== id)),
+  }
+}
+
+// ── Employees store ───────────────────────────────────────────────────────────
+
+function commitEmployees(next) {
+  _employees = next
+  persistEmployees(next)
+  notifyEmployees()
+  scheduleSync()
+}
+
+export function useEmployees() {
+  const [employees, setEmployees] = useState(_employees)
+
+  useEffect(() => {
+    _employeeListeners.push(setEmployees)
+    return () => { _employeeListeners = _employeeListeners.filter(f => f !== setEmployees) }
+  }, [])
+
+  return {
+    employees,
+    saveEmployee: (emp) => {
+      const exists = _employees.some(e => e.id === emp.id)
+      commitEmployees(exists
+        ? _employees.map(e => e.id === emp.id ? emp : e)
+        : [..._employees, emp]
+      )
+    },
+    deleteEmployee: (id) => commitEmployees(_employees.filter(e => e.id !== id)),
   }
 }

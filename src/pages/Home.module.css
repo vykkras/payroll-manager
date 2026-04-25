@@ -5,8 +5,18 @@
   padding: 0 28px; height: 56px;
   display: flex; align-items: center; gap: 12px;
 }
-.logo { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.logo { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; flex-shrink: 0; }
 .logo span { color: #7986cb; }
+
+.nav { display: flex; gap: 4px; margin-left: 8px; }
+.navBtn {
+  background: none; border: none; color: rgba(255,255,255,0.45);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 6px 14px; border-radius: 6px; transition: all 0.15s;
+}
+.navBtn:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.06); }
+.navBtnActive { color: #fff !important; background: rgba(255,255,255,0.12) !important; }
+
 .headerSub { font-size: 12px; color: rgba(255,255,255,0.35); }
 .syncDot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 4px; flex-shrink: 0; transition: background 0.3s; cursor: help; }
 .syncErr { font-size: 11px; color: #ef9a9a; margin-left: 6px; }

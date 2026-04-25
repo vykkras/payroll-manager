@@ -5,11 +5,13 @@ import ProjectPage from './pages/ProjectPage'
 import FolderView  from './pages/FolderView'
 import Editor      from './pages/Editor'
 import SheetEditor from './pages/SheetEditor'
+import Employees   from './pages/Employees'
 import './index.css'
 
 export default function App() {
   const store = useStore()
-  const [route, setRoute] = useState({ page: 'home', pid: null, fid: null, sheetId: null })
+  const [route,   setRoute]   = useState({ page: 'home', pid: null, fid: null, sheetId: null })
+  const [section, setSection] = useState('payrolls')
 
   const goHome    = ()         => setRoute({ page: 'home',    pid: null, fid: null, sheetId: null })
   const goProject = pid        => setRoute({ page: 'project', pid,       fid: null, sheetId: null })
@@ -38,8 +40,12 @@ export default function App() {
 
   return (
     <>
-      {route.page === 'home' && (
-        <Home store={store} onOpenProject={goProject} />
+      {route.page === 'home' && section === 'employees' && (
+        <Employees section={section} onSectionChange={setSection} />
+      )}
+
+      {route.page === 'home' && section === 'payrolls' && (
+        <Home store={store} onOpenProject={goProject} section={section} onSectionChange={setSection} />
       )}
 
       {route.page === 'project' && project && (

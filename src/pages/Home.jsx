@@ -22,7 +22,7 @@ function stepLabel(step) {
   return { template: 'Start', name: 'Name', columns: 'Columns', items: 'Payroll Items' }[step]
 }
 
-export default function Home({ store, onOpenProject }) {
+export default function Home({ store, onOpenProject, section, onSectionChange }) {
   const { status: syncStatus, error: syncError } = useSyncStatus()
   const [showModal, setShowModal] = useState(false)
   const [step, setStep]           = useState('template')
@@ -154,7 +154,10 @@ export default function Home({ store, onOpenProject }) {
     <div className={s.page}>
       <header className={s.header}>
         <div className={s.logo}>DC <span>Cable</span></div>
-        <span className={s.headerSub}>Payroll Manager</span>
+        <nav className={s.nav}>
+          <button className={`${s.navBtn} ${section === 'payrolls' ? s.navBtnActive : ''}`} onClick={() => onSectionChange('payrolls')}>Payrolls</button>
+          <button className={`${s.navBtn} ${section === 'employees' ? s.navBtnActive : ''}`} onClick={() => onSectionChange('employees')}>Employees</button>
+        </nav>
         <span
           className={s.syncDot}
           style={{ background: syncStatus === 'ok' ? '#2e7d32' : syncStatus === 'error' ? '#c0392b' : '#aaa' }}
