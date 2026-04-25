@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { uid, useCrews } from '../store/useStore'
+import EmployeePicker from './EmployeePicker'
 import s from './PayrollBuilder.module.css'
 
 const BASE_POSITIONS = [
@@ -386,7 +387,11 @@ export default function PayrollBuilder({
         </div>
         <div className={s.metaField}>
           <label style={{ color: posColor }}>▸ {crewLabel}</label>
-          <input value={currentCrewName} onChange={e => setCurrentCrewName(e.target.value)} placeholder="Crew member name" />
+          <EmployeePicker
+            value={currentCrewName}
+            onChange={setCurrentCrewName}
+            placeholder="Search employees…"
+          />
         </div>
         <div className={s.metaSaveCrew}>
           <button className={s.btnSaveCrew} onClick={handleSaveCrew}>+ Save as Crew</button>
