@@ -137,7 +137,7 @@ export default function Employees({ section, onSectionChange }) {
       {showForm && (
         <Modal title={editId ? 'Edit Employee' : 'Add Employee'} onClose={() => setShowForm(false)}>
           {field('name',       'Full Name',      'e.g. John Smith')}
-          {field('employeeId', 'Employee ID',    'e.g. 1042')}
+          {field('employeeId', 'ID',              'e.g. 1042')}
           {field('phone',      'Phone',          'e.g. 555-0100')}
           {field('email',      'Email',          'e.g. john@example.com', 'email')}
           <div className={s.modalFooter}>
