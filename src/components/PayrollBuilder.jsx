@@ -49,6 +49,7 @@ export default function PayrollBuilder({
   config,
   onSave,
   onClose,
+  onPrintSummary,
   editPayroll,
   defaultPeriod,
   // slot-aware props (from Editor)
@@ -330,6 +331,27 @@ export default function PayrollBuilder({
 
   const activeTotal = slotTotal(activeSlot)
 
+  // ── Print summary ─────────────────────────────────────────────────────────
+  function handlePrintSummary() {
+    if (!onPrintSummary) return
+    onPrintSummary({
+      period,
+      slots: slots.map(slot => {
+        const { sub, disc, tot } = slotTotal(slot)
+        return {
+          id: slot.id,
+          label: slot.label,
+          color: slot.color,
+          crewName: crewNames[slot.id] || '',
+          subtotal: sub,
+          deductions: disc,
+          total: tot,
+          discountLines: discounts[slot.id] || [],
+        }
+      }),
+    })
+  }
+
   // ── Save ──────────────────────────────────────────────────────────────────
   function handleSave() {
     const cleanDiscounts = {}
@@ -535,6 +557,7 @@ export default function PayrollBuilder({
         </div>
         <div className={s.footerBtns}>
           {onClose && <button className={s.btnCancel} onClick={onClose}>Cancel</button>}
+          {onPrintSummary && <button className={s.btnSummary} onClick={handlePrintSummary}>🖨 Summary</button>}
           <button className={s.btnSave} onClick={handleSave} disabled={!currentCrewName.trim()}>
             {editPayroll ? '✓ Update' : '💾 Save Payroll'}
           </button>

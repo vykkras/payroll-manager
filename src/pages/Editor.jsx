@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { uid } from '../store/useStore'
 import PayrollBuilder from '../components/PayrollBuilder'
 import PrintView from '../components/PrintView'
+import SummaryPrint from '../components/SummaryPrint'
 import Modal from '../components/Modal'
 import s from './Editor.module.css'
 
@@ -199,6 +200,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [printSlot,     setPrintSlot]     = useState(null)
   const [showPrintPick, setShowPrintPick] = useState(false)
   const [showPrint,     setShowPrint]     = useState(false)
+  const [summaryData,   setSummaryData]   = useState(null)
   const [draft,        setDraft]        = useState(editPayroll || null)
   const [showLeft,     setShowLeft]     = useState(true)
   const [showRight,    setShowRight]    = useState(true)
@@ -322,6 +324,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
               onAll2TargetChange={setAll2Target}
               onSave={handlePayrollSave}
               onClose={null}
+              onPrintSummary={setSummaryData}
             />
           </div>
         </div>}
@@ -369,6 +372,15 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
         slot={printSlot}
         payroll={draft}
         onClose={() => setShowPrint(false)}
+      />
+    )}
+
+    {summaryData && (
+      <SummaryPrint
+        project={project}
+        folder={folder}
+        summary={summaryData}
+        onClose={() => setSummaryData(null)}
       />
     )}
   </>
