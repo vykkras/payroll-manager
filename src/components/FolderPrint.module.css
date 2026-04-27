@@ -44,90 +44,45 @@
 .folderName  { font-size: 12px; color: #888; }
 .headerRight { text-align: right; }
 .docTitle    { font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-.docSub      { font-size: 11px; color: #888; margin-top: 4px; }
 
-.rule { border: none; border-top: 2px solid #1a1a2e; margin: 14px 0 18px; }
+.rule { border: none; border-top: 2px solid #1a1a2e; margin: 14px 0 20px; }
 
-.sectionLabel {
-  font-size: 9px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 1px; color: #999; margin-bottom: 8px;
+/* Stats card — mirrors FolderView summaryPanel */
+.statsCard {
+  display: flex; gap: 0; border: 1px solid #e0e0e0; border-radius: 10px;
+  overflow: hidden; margin-bottom: 24px;
 }
+.statBlock { flex: 1; padding: 16px 20px; }
+.statDivider { width: 1px; background: #e0e0e0; flex-shrink: 0; }
+.statLabel { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #aaa; margin-bottom: 6px; }
+.statVal   { font-size: 22px; font-weight: 800; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+.statValPct{ font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.statSub   { font-size: 11px; color: #aaa; margin-top: 4px; line-height: 1.5; }
 
-/* Summary table */
-.summaryTable { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-.summaryTable thead th {
-  background: #1a1a2e; color: rgba(255,255,255,0.9);
-  padding: 7px 10px; text-align: left;
-  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+/* Crew list */
+.crewList { display: flex; flex-direction: column; }
+
+.crewRow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 6px;
 }
-.summaryTable tbody td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
-.summaryTable tbody tr:last-child td { border-bottom: none; }
-.rowAlt td { background: #f8f8f8; }
-.tr { text-align: right !important; }
+.crewRowAlt { background: #f8f8f8; }
 
-.periodCell  { font-size: 10px; color: #888; white-space: nowrap; }
-.posBadge    { font-size: 10px; font-weight: 800; text-transform: uppercase; border: 2px solid; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }
-.crewCell    { font-weight: 700; font-size: 12px; }
-.discCell    { color: #c0392b; }
-.totalCell   { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 12px; }
-
-.summaryTable tfoot td { border-top: 2px solid #1a1a2e; }
-.sumLabel  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 10px; }
-.sumCell   { padding: 8px 10px; font-weight: 800; font-variant-numeric: tabular-nums; background: #f0f4ff; }
-.grandTotal { font-size: 14px; font-weight: 900; }
-
-/* Crew sections */
-.crewSection { margin-bottom: 4px; }
-
-.crewHeader {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px; margin-top: 20px;
+.posBadge {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  border: 2px solid; border-radius: 4px; padding: 2px 9px;
+  white-space: nowrap; flex-shrink: 0;
 }
-.crewHeaderLeft { display: flex; align-items: center; gap: 10px; }
-.crewPosBadge {
-  font-size: 11px; font-weight: 800; text-transform: uppercase;
-  border-radius: 5px; padding: 3px 12px; letter-spacing: 0.4px;
-}
-.crewName   { font-size: 16px; font-weight: 800; color: #1a1a2e; }
-.crewPeriod { font-size: 11px; color: #888; font-weight: 600; }
+.crewName  { flex: 1; font-size: 13px; font-weight: 700; color: #1a1a2e; }
+.period    { font-size: 11px; color: #aaa; margin-right: 4px; }
+.crewTotal { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
-/* Items table */
-.itemsTable { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 6px; }
-.itemsTable thead th {
-  background: #f5f5f5; color: #888;
-  padding: 5px 8px; text-align: left;
-  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
-  border-bottom: 1px solid #e0e0e0;
-}
-.itemsTable tbody td { padding: 5px 8px; border-bottom: 1px solid #f5f5f5; }
-.itemsTable tbody tr:last-child td { border-bottom: none; }
-.code { font-weight: 700; color: #3949ab; font-size: 10px; }
-.amtCell { font-weight: 700; font-variant-numeric: tabular-nums; }
-.noItems { font-size: 11px; color: #bbb; font-style: italic; margin: 4px 0 6px; }
-
-/* Deductions */
-.deductionsBlock { margin: 4px 0; padding: 6px 8px; background: #fff5f5; border-radius: 5px; }
-.deductionRow { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
-.deductionAmt { color: #c0392b; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-/* Totals */
-.crewTotals {
-  display: flex; flex-direction: column; align-items: flex-end;
-  gap: 3px; margin-top: 6px;
-}
-.crewTotalLine {
-  display: flex; justify-content: space-between;
-  width: 200px; font-size: 11px; color: #777; font-variant-numeric: tabular-nums;
-}
-.crewNetLine {
+.grandRow {
   display: flex; justify-content: space-between; align-items: baseline;
-  width: 200px; font-size: 15px; font-weight: 900;
-  border-top: 2px solid #1a1a2e; padding-top: 4px; margin-top: 3px;
-  font-variant-numeric: tabular-nums;
+  border-top: 2px solid #1a1a2e; margin-top: 4px; padding: 10px 14px 0;
 }
-.crewNetLine span:first-child { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #999; }
-
-.crewDivider { border-bottom: 1px dashed #ddd; margin: 18px 0 0; }
+.grandLabel { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #555; }
+.grandVal   { font-size: 18px; font-weight: 900; color: #1a1a2e; font-variant-numeric: tabular-nums; }
 
 /* Footer */
 .pageFooter {
@@ -139,7 +94,7 @@
 /* Mobile */
 @media (max-width: 700px) {
   .pageWrap { padding: 10px; overflow-x: auto; justify-content: flex-start; }
-  .page { min-width: 700px; }
+  .page { min-width: 600px; }
 }
 
 /* Print */
@@ -149,5 +104,4 @@
   .pageWrap { padding: 0 !important; overflow: visible !important; display: block !important; }
   .page { box-shadow: none !important; width: 100% !important; padding: 12mm 16mm 20mm !important; }
   .pageFooter { position: static; margin-top: 24px; }
-  .crewSection { page-break-inside: avoid; }
 }
