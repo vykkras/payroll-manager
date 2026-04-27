@@ -406,9 +406,6 @@ export default function PayrollBuilder({
         </div>
       )}
 
-      {/* ── Scrollable body: items + discounts + summary + crews ── */}
-      <div className={s.scrollBody}>
-
       {/* ── Items table ── */}
       {!hasItems ? (
         <div className={s.noItems}>No payroll items configured — go to the project's Payroll Items tab to set them up.</div>
@@ -516,9 +513,7 @@ export default function PayrollBuilder({
         </div>
       )}
 
-      </div>{/* end scrollBody */}
-
-      {/* ── Footer controls — always visible at bottom ── */}
+      {/* ── Footer controls — sticky at bottom ── */}
       <div className={s.footer}>
         <div className={s.footerControls}>
           <button className={`${s.btnFillAll} ${fillTwo ? s.btnFillAllOn : ''}`} onClick={() => { setFillTwo(v => !v); setFillAll(false) }} title="Auto-fill target from Primero">{fillTwo ? '● All 2' : '○ All 2'}</button>
