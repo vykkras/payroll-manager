@@ -45,8 +45,11 @@
 .autoFillBtn { background: #e8eaf6; color: #3949ab; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .autoFillBtn:hover { background: #c5cae9; }
 
+/* Scrollable body — items + discounts + summary + crews all scroll together */
+.scrollBody { flex: 1; overflow-y: auto; min-height: 0; }
+
 /* Items table */
-.tableWrap { flex: 1; overflow-y: auto; min-height: 0; }
+.tableWrap { }
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table thead th {
   padding: 8px 6px; text-align: left;
@@ -85,7 +88,7 @@
 .qtyAuto { background: #f0f4ff; border-color: #c5cae9; color: #3949ab; }
 
 /* Discounts */
-.discountsSection { flex-shrink: 0; border-top: 1px solid #e8e8e8; padding: 10px 0; }
+.discountsSection { border-top: 1px solid #e8e8e8; padding: 10px 0; }
 .discountsHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .discountsTitle { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.4px; }
 .btnAddDiscount { background: none; border: 1px dashed #ccc; border-radius: 6px; padding: 3px 10px; font-size: 11px; color: #aaa; cursor: pointer; }
@@ -101,7 +104,7 @@
 
 /* 3-position summary */
 .summary {
-  flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr 1fr;
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: 8px; padding: 10px 0 8px; border-top: 1px solid #ececec;
 }
 .summaryCard {

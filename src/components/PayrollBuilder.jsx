@@ -406,6 +406,9 @@ export default function PayrollBuilder({
         </div>
       )}
 
+      {/* ── Scrollable body: items + discounts + summary + crews ── */}
+      <div className={s.scrollBody}>
+
       {/* ── Items table ── */}
       {!hasItems ? (
         <div className={s.noItems}>No payroll items configured — go to the project's Payroll Items tab to set them up.</div>
@@ -501,7 +504,21 @@ export default function PayrollBuilder({
         })}
       </div>
 
-      {/* ── Footer controls ── */}
+      {/* ── Saved crews ── */}
+      {crews.length > 0 && (
+        <div className={s.crewsSection}>
+          {crews.map(c => (
+            <div key={c.id} className={s.crewCard}>
+              <span className={s.crewCardLabel} onClick={() => loadCrew(c)}>{c.label}</span>
+              <button className={s.crewCardDel} onClick={() => storeDeleteCrew(c.id)}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      </div>{/* end scrollBody */}
+
+      {/* ── Footer controls — always visible at bottom ── */}
       <div className={s.footer}>
         <div className={s.footerControls}>
           <button className={`${s.btnFillAll} ${fillTwo ? s.btnFillAllOn : ''}`} onClick={() => { setFillTwo(v => !v); setFillAll(false) }} title="Auto-fill target from Primero">{fillTwo ? '● All 2' : '○ All 2'}</button>
@@ -528,18 +545,6 @@ export default function PayrollBuilder({
           </button>
         </div>
       </div>
-
-      {/* ── Saved crews ── */}
-      {crews.length > 0 && (
-        <div className={s.crewsSection}>
-          {crews.map(c => (
-            <div key={c.id} className={s.crewCard}>
-              <span className={s.crewCardLabel} onClick={() => loadCrew(c)}>{c.label}</span>
-              <button className={s.crewCardDel} onClick={() => storeDeleteCrew(c.id)}>✕</button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
