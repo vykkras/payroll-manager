@@ -30,6 +30,12 @@
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
 }
 .btnSummary:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
+.btnPrintAll {
+  background: #2e7d32; border: none; border-radius: 7px;
+  padding: 7px 14px; font-size: 12px; font-weight: 600; color: #fff;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btnPrintAll:hover { background: #1b5e20; }
 
 /* Main */
 .main { padding: 24px 28px; max-width: 960px; margin: 0 auto; width: 100%; flex: 1; }

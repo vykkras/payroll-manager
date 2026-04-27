@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { treePath, uid } from '../store/useStore'
 import Modal from '../components/Modal'
 import PrintView from '../components/PrintView'
+import FolderPrint from '../components/FolderPrint'
 import s from './FolderView.module.css'
 
 function relDate(iso) {
@@ -31,10 +32,11 @@ function fmtPct(n) {
 export default function FolderView({ store, project, folder, onBack, onOpenFolder, onOpenEditor, onEditPayroll }) {
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderName, setFolderName]         = useState('')
-  const [delFolder,  setDelFolder]          = useState(null)
-  const [delPayroll, setDelPayroll]         = useState(null)
+  const [delFolder,    setDelFolder]        = useState(null)
+  const [delPayroll,   setDelPayroll]       = useState(null)
   const [printPayroll, setPrintPayroll]     = useState(null)
   const [printSlot,    setPrintSlot]        = useState(null)
+  const [showFullPrint, setShowFullPrint]   = useState(false)
 
   // Summary
   const [showSummary, setShowSummary] = useState(false)
@@ -104,6 +106,7 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
           ))}
         </div>
         <button className={s.btnSummary} onClick={openSummary}>Summary</button>
+        {payrolls.length > 0 && <button className={s.btnPrintAll} onClick={() => setShowFullPrint(true)}>🖨 Print All</button>}
         <button className={s.btnEditor} onClick={onOpenEditor}>Open Editor ✏</button>
       </header>
 
@@ -341,6 +344,15 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
           slot={printSlot}
           payroll={printPayroll}
           onClose={() => setPrintPayroll(null)}
+        />
+      )}
+
+      {showFullPrint && (
+        <FolderPrint
+          project={project}
+          folder={folder}
+          payrolls={payrolls}
+          onClose={() => setShowFullPrint(false)}
         />
       )}
     </div>
