@@ -92,6 +92,7 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
   }
 
   return (
+    <>
     <div className={s.page}>
       <header className={s.header}>
         <div className={s.logo}>DC <span>Cable</span></div>
@@ -347,14 +348,16 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
         />
       )}
 
-      {showFullPrint && (
-        <FolderPrint
-          project={project}
-          folder={folder}
-          payrolls={payrolls}
-          onClose={() => setShowFullPrint(false)}
-        />
-      )}
     </div>
+
+    {showFullPrint && (
+      <FolderPrint
+        project={project}
+        folder={folder}
+        payrolls={payrolls}
+        onClose={() => setShowFullPrint(false)}
+      />
+    )}
+    </>
   )
 }

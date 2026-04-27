@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import s from './FolderPrint.module.css'
 
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
@@ -42,6 +43,11 @@ function buildCrewRows(payrolls) {
 }
 
 export default function FolderPrint({ project, folder, payrolls, onClose }) {
+  useEffect(() => {
+    document.body.classList.add('print-active')
+    return () => document.body.classList.remove('print-active')
+  }, [])
+
   const crews       = buildCrewRows(payrolls)
   const payrollTotal = crews.reduce((s, c) => s + c.total, 0)
 
