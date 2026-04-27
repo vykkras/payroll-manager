@@ -59,7 +59,7 @@ function initGrid(columns, folderRows, position) {
   })
 }
 
-function DataGrid({ store, project, folder, position }) {
+function DataGrid({ store, project, folder, position, mirrorPositions }) {
   const columns = project.columns || []
 
   const [grid, setGridState] = useState(() => initGrid(columns, folder.rows, position))
@@ -93,7 +93,9 @@ function DataGrid({ store, project, folder, position }) {
     if (computed !== val) setGrid(finalGrid)
     const nonEmpty = finalGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
     const base = normalizeRows(folder.rows)
-    store.setFolderRows(project.id, folder.id, { ...base, [position]: nonEmpty })
+    const update = { ...base, [position]: nonEmpty }
+    if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
+    store.setFolderRows(project.id, folder.id, update)
   }
 
   function focusCell(tbody, rowIdx, colIdx) {
@@ -189,6 +191,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const slots = buildSlots(extraSlots)
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
   const [all2Target,   setAll2Target]   = useState('segundo')
+  const [addTwo,       setAddTwo]       = useState(false)
+  const [addAll,       setAddAll]       = useState(false)
   const [clearKey,     setClearKey]     = useState(0)
   const [savedMsg,      setSavedMsg]      = useState(false)
   const [showClear,     setShowClear]     = useState(false)
@@ -271,7 +275,19 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
           </div>
           <div className={s.panelTitle}>
             <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
-            <button className={s.panelToggleBtnLight} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
+            <div className={s.panelTitleRight}>
+              <button
+                className={`${s.addAllBtn} ${addTwo && !addAll ? s.addAllBtnOn : ''}`}
+                onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
+                title="Mirror edits to Segundo"
+              >{addTwo && !addAll ? '● All 2' : '○ All 2'}</button>
+              <button
+                className={`${s.addAllBtn} ${addAll ? s.addAllBtnOn : ''}`}
+                onClick={() => { setAddAll(v => !v); setAddTwo(false) }}
+                title="Mirror edits to all positions"
+              >{addAll ? '● All 3' : '○ All 3'}</button>
+              <button className={s.panelToggleBtnLight} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
+            </div>
           </div>
           <DataGrid
             key={activeSlotId + '-' + clearKey}
@@ -279,6 +295,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             project={project}
             folder={folder}
             position={activeSlotId}
+            mirrorPositions={addAll ? ['segundo', 'tercero'] : addTwo ? ['segundo'] : []}
           />
         </div>}
 
