@@ -294,17 +294,19 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             <span>Payroll Builder</span>
             <button className={s.panelToggleBtnLight} onClick={() => setShowRight(false)} title="Hide payroll">Hide ▶</button>
           </div>
-          <PayrollBuilder
-            config={{ items: project.items || [] }}
-            editPayroll={draft}
-            slots={slots}
-            activeSlotId={activeSlotId}
-            onSlotChange={setActiveSlotId}
-            all2Target={all2Target}
-            onAll2TargetChange={setAll2Target}
-            onSave={handlePayrollSave}
-            onClose={null}
-          />
+          <div className={s.payrollWrap}>
+            <PayrollBuilder
+              config={{ items: project.items || [] }}
+              editPayroll={draft}
+              slots={slots}
+              activeSlotId={activeSlotId}
+              onSlotChange={setActiveSlotId}
+              all2Target={all2Target}
+              onAll2TargetChange={setAll2Target}
+              onSave={handlePayrollSave}
+              onClose={null}
+            />
+          </div>
         </div>}
 
         {/* Show-right button when right is hidden */}

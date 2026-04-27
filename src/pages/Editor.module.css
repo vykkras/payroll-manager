@@ -241,7 +241,8 @@
 .revealBtn:hover { background: #2c2c4a; color: #fff; }
 
 /* Right panel */
-.rightPanel { width: 48%; overflow-y: auto; background: #fff; position: relative; }
+.rightPanel { width: 48%; display: flex; flex-direction: column; background: #fff; position: relative; overflow: hidden; }
+.payrollWrap { flex: 1; min-height: 0; overflow: hidden; }
 
 .savedBanner {
   position: sticky; top: 0; z-index: 10;
@@ -284,7 +285,8 @@
   .tableWrap { height: auto; overflow: visible; }
   .tableScroll { overflow-x: auto; height: auto; max-height: none; overflow-y: visible; }
   .table { min-width: 480px; }
-  .rightPanel { width: 100%; overflow-y: visible; }
+  .rightPanel { width: 100%; height: auto; overflow: visible; flex-direction: column; }
+  .payrollWrap { overflow: visible; min-height: 0; }
   .posTabs { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
   .filterBar { overflow-x: auto; flex-wrap: nowrap; }
   .rowFormGrid { grid-template-columns: 1fr 1fr; }
