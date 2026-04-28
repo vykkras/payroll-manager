@@ -261,6 +261,7 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
                       onMouseDown={e => startSel(e, rowIdx, colIdx)}
                       onMouseEnter={() => extendSel(rowIdx, colIdx)}
                     >
+                      <span className={s.cellSizer}>{row[c.id] || ' '}</span>
                       <input
                         className={s.cellInput}
                         value={row[c.id] ?? ''}
