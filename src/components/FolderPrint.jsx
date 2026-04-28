@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import s from './FolderPrint.module.css'
 
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
@@ -56,7 +57,7 @@ export default function FolderPrint({ project, folder, payrolls, onClose }) {
   const hasSummary   = incomeLines.some(l => l.amount)
   const pct          = incomeTotal > 0 ? (payrollTotal / incomeTotal) * 100 : null
 
-  return (
+  return createPortal(
     <div className={s.overlay}>
       <div className={s.toolbar}>
         <span className={s.toolbarTitle}>Print — {folder.name}</span>
@@ -138,5 +139,5 @@ export default function FolderPrint({ project, folder, payrolls, onClose }) {
         </div>
       </div>
     </div>
-  )
+  , document.body)
 }
