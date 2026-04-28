@@ -29,6 +29,12 @@ function fmtPct(n) {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
 }
 
+const STATUS_OPTIONS = [
+  { key: 'paid',    label: 'Paid',    color: '#2e7d32', bg: '#e8f5e9', cardBg: '#f0faf0' },
+  { key: 'on-hold', label: 'On Hold', color: '#e65100', bg: '#fff3e0', cardBg: '#fffbf0' },
+  { key: 'error',   label: 'Error',   color: '#c0392b', bg: '#ffebee', cardBg: '#fff5f5' },
+]
+
 export default function FolderView({ store, project, folder, onBack, onOpenFolder, onOpenEditor, onEditPayroll }) {
   const [showNewFolder, setShowNewFolder]   = useState(false)
   const [folderName, setFolderName]         = useState('')
@@ -37,6 +43,13 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
   const [printPayroll, setPrintPayroll]     = useState(null)
   const [printSlot,    setPrintSlot]        = useState(null)
   const [showFullPrint, setShowFullPrint]   = useState(false)
+  const [openStatusId,  setOpenStatusId]   = useState(null)
+
+  function setPayrollStatus(pr, statusKey) {
+    const newStatus = pr.status === statusKey ? null : statusKey
+    store.savePayroll(project.id, folder.id, { ...pr, status: newStatus })
+    setOpenStatusId(null)
+  }
 
   // Summary
   const [showSummary, setShowSummary] = useState(false)
@@ -174,12 +187,39 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
           <div className={s.section}>
             <div className={s.sectionLabel}>Payrolls</div>
             <div className={s.payrollList}>
-              {payrolls.map(pr => (
-                <div key={pr.id} className={s.payrollCard} onClick={() => onEditPayroll(pr)}>
+              {payrolls.map(pr => {
+                const statusOpt = STATUS_OPTIONS.find(o => o.key === pr.status)
+                return (
+                <div key={pr.id} className={s.payrollCard} style={statusOpt ? { background: statusOpt.cardBg, borderColor: statusOpt.color + '55' } : {}} onClick={() => onEditPayroll(pr)}>
                   {/* Period + actions */}
                   <div className={s.payrollCardHeader}>
                     <span className={s.payrollPeriod}>{pr.period || 'No period'}</span>
                     <div className={s.payrollCardActions}>
+                      {/* Status button */}
+                      <div className={s.statusWrap} onClick={e => e.stopPropagation()}>
+                        <button
+                          className={s.statusBtn}
+                          style={statusOpt ? { color: statusOpt.color, borderColor: statusOpt.color + '88', background: statusOpt.bg } : {}}
+                          onClick={e => { e.stopPropagation(); setOpenStatusId(openStatusId === pr.id ? null : pr.id) }}
+                        >
+                          {statusOpt ? statusOpt.label : '● Status'} ▾
+                        </button>
+                        {openStatusId === pr.id && (
+                          <div className={s.statusMenu}>
+                            {STATUS_OPTIONS.map(opt => (
+                              <button
+                                key={opt.key}
+                                className={`${s.statusMenuItem} ${pr.status === opt.key ? s.statusMenuItemOn : ''}`}
+                                style={{ color: opt.color }}
+                                onClick={() => setPayrollStatus(pr, opt.key)}
+                              >{opt.label}</button>
+                            ))}
+                            {pr.status && (
+                              <button className={s.statusMenuClear} onClick={() => setPayrollStatus(pr, pr.status)}>Clear</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <button className={s.printPayrollBtn} onClick={e => {
                         e.stopPropagation()
                         setPrintPayroll(pr)
@@ -222,7 +262,8 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                   </div>
                   <div className={s.payrollCardHint}>Click to edit</div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
