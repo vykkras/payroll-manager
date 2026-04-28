@@ -71,6 +71,89 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     setGridState(next)
   }
 
+  // ── Selection ────────────────────────────────────────────────────────────────
+  const [sel, setSel] = useState(null)         // { r1, c1, r2, c2 } normalised
+  const selRef        = useRef(null)
+  const dragStart     = useRef(null)
+  const mouseDown     = useRef(false)
+  const folderRef     = useRef(folder)
+  useEffect(() => { folderRef.current = folder }, [folder])
+
+  function normSel(r1, c1, r2, c2) {
+    return { r1: Math.min(r1,r2), c1: Math.min(c1,c2), r2: Math.max(r1,r2), c2: Math.max(c1,c2) }
+  }
+
+  function startSel(e, rowIdx, colIdx) {
+    mouseDown.current = true
+    if (e.shiftKey && selRef.current) {
+      const ns = normSel(selRef.current.r1, selRef.current.c1, rowIdx, colIdx)
+      setSel(ns); selRef.current = ns
+    } else {
+      dragStart.current = { row: rowIdx, col: colIdx }
+      const ns = normSel(rowIdx, colIdx, rowIdx, colIdx)
+      setSel(ns); selRef.current = ns
+    }
+  }
+
+  function extendSel(rowIdx, colIdx) {
+    if (!mouseDown.current || !dragStart.current) return
+    const ns = normSel(dragStart.current.row, dragStart.current.col, rowIdx, colIdx)
+    setSel(ns); selRef.current = ns
+  }
+
+  useEffect(() => {
+    const onUp = () => { mouseDown.current = false; dragStart.current = null }
+    document.addEventListener('mouseup', onUp)
+    return () => document.removeEventListener('mouseup', onUp)
+  }, [])
+
+  // ── Copy / Paste ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function onKey(e) {
+      if (!(e.ctrlKey || e.metaKey)) return
+      const s = selRef.current
+      if (!s) return
+
+      if (e.key === 'c') {
+        e.preventDefault()
+        const lines = []
+        for (let r = s.r1; r <= s.r2; r++) {
+          const row = gridRef.current[r]
+          lines.push(columns.slice(s.c1, s.c2 + 1).map(c => row[c.id] ?? '').join('\t'))
+        }
+        try { await navigator.clipboard.writeText(lines.join('\n')) } catch {}
+      }
+
+      if (e.key === 'v') {
+        e.preventDefault()
+        try {
+          const text = await navigator.clipboard.readText()
+          if (!text) return
+          const pasteRows = text.split('\n').map(r => r.split('\t'))
+          const newGrid = gridRef.current.map(r => ({ ...r }))
+          pasteRows.forEach((cells, ri) => {
+            const rowIdx = s.r1 + ri
+            if (rowIdx >= GRID_ROWS) return
+            cells.forEach((val, ci) => {
+              const colIdx = s.c1 + ci
+              if (colIdx >= columns.length) return
+              newGrid[rowIdx] = { ...newGrid[rowIdx], [columns[colIdx].id]: val }
+            })
+          })
+          setGrid(newGrid)
+          const nonEmpty = newGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+          const base = normalizeRows(folderRef.current.rows)
+          const update = { ...base, [position]: nonEmpty }
+          if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
+          store.setFolderRows(project.id, folderRef.current.id, update)
+        } catch {}
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [columns, position, mirrorPositions, store, project])
+
+  // ── Totals ───────────────────────────────────────────────────────────────────
   const totals = useMemo(() => {
     const t = {}
     columns.forEach(col => {
@@ -154,17 +237,25 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
             {grid.map((row, rowIdx) => (
               <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''}`}>
                 <td className={s.rowNum}>{rowIdx + 1}</td>
-                {columns.map((c, colIdx) => (
-                  <td key={c.id} className={s.cellTd}>
-                    <input
-                      className={s.cellInput}
-                      value={row[c.id] ?? ''}
-                      onChange={e => handleChange(rowIdx, c.id, e.target.value)}
-                      onBlur={() => handleBlur(rowIdx, c.id)}
-                      onKeyDown={e => handleKeyDown(e, rowIdx, colIdx)}
-                    />
-                  </td>
-                ))}
+                {columns.map((c, colIdx) => {
+                  const selected = sel && rowIdx >= sel.r1 && rowIdx <= sel.r2 && colIdx >= sel.c1 && colIdx <= sel.c2
+                  return (
+                    <td
+                      key={c.id}
+                      className={`${s.cellTd} ${selected ? s.cellSelected : ''}`}
+                      onMouseDown={e => startSel(e, rowIdx, colIdx)}
+                      onMouseEnter={() => extendSel(rowIdx, colIdx)}
+                    >
+                      <input
+                        className={s.cellInput}
+                        value={row[c.id] ?? ''}
+                        onChange={e => handleChange(rowIdx, c.id, e.target.value)}
+                        onBlur={() => handleBlur(rowIdx, c.id)}
+                        onKeyDown={e => handleKeyDown(e, rowIdx, colIdx)}
+                      />
+                    </td>
+                  )
+                })}
               </tr>
             ))}
           </tbody>
