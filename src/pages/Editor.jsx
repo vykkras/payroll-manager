@@ -71,13 +71,26 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     setGridState(next)
   }
 
+  // ── History (undo) ───────────────────────────────────────────────────────────
+  const historyRef = useRef([])
+  const folderRef  = useRef(folder)
+  useEffect(() => { folderRef.current = folder }, [folder])
+
+  function commitGrid(newGrid) {
+    historyRef.current = [...historyRef.current.slice(-29), gridRef.current.map(r => ({ ...r }))]
+    setGrid(newGrid)
+    const nonEmpty = newGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+    const base = normalizeRows(folderRef.current.rows)
+    const update = { ...base, [position]: nonEmpty }
+    if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
+    store.setFolderRows(project.id, folderRef.current.id, update)
+  }
+
   // ── Selection ────────────────────────────────────────────────────────────────
   const [sel, setSel] = useState(null)         // { r1, c1, r2, c2 } normalised
   const selRef        = useRef(null)
   const dragStart     = useRef(null)
   const mouseDown     = useRef(false)
-  const folderRef     = useRef(folder)
-  useEffect(() => { folderRef.current = folder }, [folder])
 
   function normSel(r1, c1, r2, c2) {
     return { r1: Math.min(r1,r2), c1: Math.min(c1,c2), r2: Math.max(r1,r2), c2: Math.max(c1,c2) }
@@ -107,10 +120,22 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     return () => document.removeEventListener('mouseup', onUp)
   }, [])
 
-  // ── Copy / Paste ─────────────────────────────────────────────────────────────
+  // ── Copy / Paste / Undo ──────────────────────────────────────────────────────
   useEffect(() => {
     async function onKey(e) {
       if (!(e.ctrlKey || e.metaKey)) return
+
+      if (e.key === 'z') {
+        e.preventDefault()
+        const prev = historyRef.current.pop()
+        if (!prev) return
+        setGrid(prev)
+        const nonEmpty = prev.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+        const base = normalizeRows(folderRef.current.rows)
+        store.setFolderRows(project.id, folderRef.current.id, { ...base, [position]: nonEmpty })
+        return
+      }
+
       const s = selRef.current
       if (!s) return
 
@@ -140,12 +165,7 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
               newGrid[rowIdx] = { ...newGrid[rowIdx], [columns[colIdx].id]: val }
             })
           })
-          setGrid(newGrid)
-          const nonEmpty = newGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
-          const base = normalizeRows(folderRef.current.rows)
-          const update = { ...base, [position]: nonEmpty }
-          if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
-          store.setFolderRows(project.id, folderRef.current.id, update)
+          commitGrid(newGrid)
         } catch {}
       }
     }
@@ -174,12 +194,7 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     const finalGrid = computed !== val
       ? current.map((r, i) => i === rowIdx ? { ...r, [colId]: computed } : r)
       : current
-    if (computed !== val) setGrid(finalGrid)
-    const nonEmpty = finalGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
-    const base = normalizeRows(folder.rows)
-    const update = { ...base, [position]: nonEmpty }
-    if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
-    store.setFolderRows(project.id, folder.id, update)
+    commitGrid(finalGrid)
   }
 
   function focusCell(tbody, rowIdx, colIdx) {
