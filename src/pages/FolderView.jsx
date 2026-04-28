@@ -30,10 +30,18 @@ function fmtPct(n) {
 }
 
 const STATUS_OPTIONS = [
-  { key: 'paid',    label: 'Paid',    color: '#2e7d32', bg: '#e8f5e9', cardBg: '#f0faf0' },
-  { key: 'on-hold', label: 'On Hold', color: '#e65100', bg: '#fff3e0', cardBg: '#fffbf0' },
-  { key: 'error',   label: 'Error',   color: '#c0392b', bg: '#ffebee', cardBg: '#fff5f5' },
+  { key: 'paid',    label: 'Paid',    color: '#2e7d32', bg: '#e8f5e9', cardBg: '#f0faf0', rank: 1 },
+  { key: 'on-hold', label: 'On Hold', color: '#e65100', bg: '#fff3e0', cardBg: '#fffbf0', rank: 2 },
+  { key: 'error',   label: 'Error',   color: '#c0392b', bg: '#ffebee', cardBg: '#fff5f5', rank: 3 },
 ]
+
+function cardStatusStyle(pr) {
+  const statuses = Object.values(pr.slotStatuses || {}).filter(Boolean)
+  if (!statuses.length) return {}
+  const worst = STATUS_OPTIONS.reduce((top, opt) =>
+    statuses.includes(opt.key) && opt.rank > (top?.rank || 0) ? opt : top, null)
+  return worst ? { background: worst.cardBg, borderColor: worst.color + '55' } : {}
+}
 
 export default function FolderView({ store, project, folder, onBack, onOpenFolder, onOpenEditor, onEditPayroll }) {
   const [showNewFolder, setShowNewFolder]   = useState(false)
@@ -45,9 +53,10 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
   const [showFullPrint, setShowFullPrint]   = useState(false)
   const [openStatusId,  setOpenStatusId]   = useState(null)
 
-  function setPayrollStatus(pr, statusKey) {
-    const newStatus = pr.status === statusKey ? null : statusKey
-    store.savePayroll(project.id, folder.id, { ...pr, status: newStatus })
+  function setSlotStatus(pr, slotId, statusKey) {
+    const current = pr.slotStatuses?.[slotId]
+    const updated = { ...pr.slotStatuses, [slotId]: current === statusKey ? null : statusKey }
+    store.savePayroll(project.id, folder.id, { ...pr, slotStatuses: updated })
     setOpenStatusId(null)
   }
 
@@ -187,39 +196,12 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
           <div className={s.section}>
             <div className={s.sectionLabel}>Payrolls</div>
             <div className={s.payrollList}>
-              {payrolls.map(pr => {
-                const statusOpt = STATUS_OPTIONS.find(o => o.key === pr.status)
-                return (
-                <div key={pr.id} className={s.payrollCard} style={statusOpt ? { background: statusOpt.cardBg, borderColor: statusOpt.color + '55' } : {}} onClick={() => onEditPayroll(pr)}>
+              {payrolls.map(pr => (
+                <div key={pr.id} className={s.payrollCard} style={cardStatusStyle(pr)} onClick={() => onEditPayroll(pr)}>
                   {/* Period + actions */}
                   <div className={s.payrollCardHeader}>
                     <span className={s.payrollPeriod}>{pr.period || 'No period'}</span>
                     <div className={s.payrollCardActions}>
-                      {/* Status button */}
-                      <div className={s.statusWrap} onClick={e => e.stopPropagation()}>
-                        <button
-                          className={s.statusBtn}
-                          style={statusOpt ? { color: statusOpt.color, borderColor: statusOpt.color + '88', background: statusOpt.bg } : {}}
-                          onClick={e => { e.stopPropagation(); setOpenStatusId(openStatusId === pr.id ? null : pr.id) }}
-                        >
-                          {statusOpt ? statusOpt.label : '● Status'} ▾
-                        </button>
-                        {openStatusId === pr.id && (
-                          <div className={s.statusMenu}>
-                            {STATUS_OPTIONS.map(opt => (
-                              <button
-                                key={opt.key}
-                                className={`${s.statusMenuItem} ${pr.status === opt.key ? s.statusMenuItemOn : ''}`}
-                                style={{ color: opt.color }}
-                                onClick={() => setPayrollStatus(pr, opt.key)}
-                              >{opt.label}</button>
-                            ))}
-                            {pr.status && (
-                              <button className={s.statusMenuClear} onClick={() => setPayrollStatus(pr, pr.status)}>Clear</button>
-                            )}
-                          </div>
-                        )}
-                      </div>
                       <button className={s.printPayrollBtn} onClick={e => {
                         e.stopPropagation()
                         setPrintPayroll(pr)
@@ -235,11 +217,33 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                       const crew  = pr.crewNames?.[p.key]
                       const total = pr[`total${p.idx}`]
                       if (!crew && !total) return null
+                      const slotStatus = STATUS_OPTIONS.find(o => o.key === pr.slotStatuses?.[p.key])
                       return (
                         <div key={p.key} className={s.payrollPosRow}>
                           <span className={s.posBadge} style={{ color: p.color, background: p.bg }}>{p.label}</span>
                           <span className={s.payrollCrew}>{crew || '—'}</span>
                           <span className={s.payrollTotal} style={{ color: p.color }}>{fmtMoney(total)}</span>
+                          <div className={s.statusWrap} onClick={e => e.stopPropagation()}>
+                            <button
+                              className={s.statusBtn}
+                              style={slotStatus ? { color: slotStatus.color, borderColor: slotStatus.color + '88', background: slotStatus.bg } : {}}
+                              onClick={e => { e.stopPropagation(); setOpenStatusId(openStatusId === `${pr.id}-${p.key}` ? null : `${pr.id}-${p.key}`) }}
+                            >{slotStatus ? slotStatus.label : '●'} ▾</button>
+                            {openStatusId === `${pr.id}-${p.key}` && (
+                              <div className={s.statusMenu}>
+                                {STATUS_OPTIONS.map(opt => (
+                                  <button key={opt.key}
+                                    className={`${s.statusMenuItem} ${pr.slotStatuses?.[p.key] === opt.key ? s.statusMenuItemOn : ''}`}
+                                    style={{ color: opt.color }}
+                                    onClick={() => setSlotStatus(pr, p.key, opt.key)}
+                                  >{opt.label}</button>
+                                ))}
+                                {pr.slotStatuses?.[p.key] && (
+                                  <button className={s.statusMenuClear} onClick={() => setSlotStatus(pr, p.key, pr.slotStatuses[p.key])}>Clear</button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -251,19 +255,40 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                       if (!crew && !total) return null
                       const color = POS_COLOR[slot.posKey] || '#3949ab'
                       const bg    = POS_BG[slot.posKey]    || '#e8eaf6'
+                      const slotStatus = STATUS_OPTIONS.find(o => o.key === pr.slotStatuses?.[slot.id])
                       return (
                         <div key={slot.id} className={s.payrollPosRow}>
                           <span className={s.posBadge} style={{ color, background: bg }}>{slot.label}</span>
                           <span className={s.payrollCrew}>{crew || '—'}</span>
                           <span className={s.payrollTotal} style={{ color }}>{fmtMoney(total)}</span>
+                          <div className={s.statusWrap} onClick={e => e.stopPropagation()}>
+                            <button
+                              className={s.statusBtn}
+                              style={slotStatus ? { color: slotStatus.color, borderColor: slotStatus.color + '88', background: slotStatus.bg } : {}}
+                              onClick={e => { e.stopPropagation(); setOpenStatusId(openStatusId === `${pr.id}-${slot.id}` ? null : `${pr.id}-${slot.id}`) }}
+                            >{slotStatus ? slotStatus.label : '●'} ▾</button>
+                            {openStatusId === `${pr.id}-${slot.id}` && (
+                              <div className={s.statusMenu}>
+                                {STATUS_OPTIONS.map(opt => (
+                                  <button key={opt.key}
+                                    className={`${s.statusMenuItem} ${pr.slotStatuses?.[slot.id] === opt.key ? s.statusMenuItemOn : ''}`}
+                                    style={{ color: opt.color }}
+                                    onClick={() => setSlotStatus(pr, slot.id, opt.key)}
+                                  >{opt.label}</button>
+                                ))}
+                                {pr.slotStatuses?.[slot.id] && (
+                                  <button className={s.statusMenuClear} onClick={() => setSlotStatus(pr, slot.id, pr.slotStatuses[slot.id])}>Clear</button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
                   </div>
                   <div className={s.payrollCardHint}>Click to edit</div>
                 </div>
-                )
-              })}
+              ))}
             </div>
           </div>
         )}
