@@ -425,6 +425,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             <PayrollBuilder
               config={{ items: project.items || [] }}
               editPayroll={draft}
+              defaultPeriod={folder.name}
               slots={slots}
               activeSlotId={activeSlotId}
               onSlotChange={setActiveSlotId}
