@@ -177,6 +177,7 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
   const totals = useMemo(() => {
     const t = {}
     columns.forEach(col => {
+      if (!col.sum) return
       const nums = grid.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
       if (nums.length > 0) t[col.id] = nums.reduce((a, b) => a + b, 0)
     })

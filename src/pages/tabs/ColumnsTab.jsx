@@ -28,7 +28,7 @@ export default function ColumnsTab({ store, project }) {
   function handleAdd() {
     const v = input.trim()
     if (!v) return
-    store.updateProjectColumns(project.id, [...columns, { id: uid(), name: v }])
+    store.updateProjectColumns(project.id, [...columns, { id: uid(), name: v, filter: false, sum: false }])
     setInput('')
   }
 
