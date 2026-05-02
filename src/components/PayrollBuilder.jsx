@@ -19,14 +19,24 @@ function calcAmount(qty, rate) {
   return (parseFloat(qty) || 0) * (parseFloat(rate) || 0)
 }
 
-function buildItems(configItems) {
-  return (configItems || []).map(it => ({
-    ...it,
-    qty1: '', qty2: '', qty3: '',
-    amt1: 0,  amt2: 0,  amt3: 0,
-    qty2manual: false,
-    extraSlots: {},
-  }))
+function buildItems(configItems, columnSums) {
+  return (configItems || []).map(it => {
+    const code = (it.code || '').trim().toLowerCase()
+    const qty1 = columnSums?.primero?.[code] != null ? String(columnSums.primero[code]) : ''
+    const qty2 = it.divBy2
+      ? qty1  // materials: same full amount as primero, user presses ÷2 to split
+      : (columnSums?.segundo?.[code] != null ? String(columnSums.segundo[code]) : '')
+    const qty3 = it.divBy2
+      ? ''    // tercero doesn't get materials
+      : (columnSums?.tercero?.[code] != null ? String(columnSums.tercero[code]) : '')
+    return {
+      ...it,
+      qty1, qty2, qty3,
+      amt1: calcAmount(qty1, it.rate1), amt2: calcAmount(qty2, it.rate2), amt3: calcAmount(qty3, it.rate3),
+      qty2manual: false,
+      extraSlots: {},
+    }
+  })
 }
 function hydrateItems(configItems, savedItems) {
   return (configItems || []).map(it => {
@@ -52,6 +62,7 @@ export default function PayrollBuilder({
   onPrintSummary,
   editPayroll,
   defaultPeriod,
+  columnSums,
   // slot-aware props (from Editor)
   slots: slotsProp,
   activeSlotId: activeSlotIdProp,
@@ -117,7 +128,7 @@ export default function PayrollBuilder({
   const [items, setItems] = useState(() =>
     editPayroll
       ? hydrateItems(config?.items, editPayroll.items)
-      : buildItems(config?.items)
+      : buildItems(config?.items, columnSums)
   )
 
   // ── Discounts (keyed by slot id) ──────────────────────────────────────────
