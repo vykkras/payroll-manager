@@ -114,14 +114,15 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   tr.getCell(6).border = { top: medBorder }
 
   // ── Production Data sheet ─────────────────────────────────────────────────
-  if (columns.length > 0 && rows.length > 0) {
+  const activeExcelCols = columns.filter(col => rows.some(r => r[col.id] !== '' && r[col.id] != null))
+  if (activeExcelCols.length > 0 && rows.length > 0) {
     const ws2 = wb.addWorksheet('Production Data')
-    ws2.columns = columns.map(c => ({ width: Math.max(14, c.name.length + 4) }))
+    ws2.columns = activeExcelCols.map(c => ({ width: Math.max(14, c.name.length + 4) }))
 
-    darkHeader(ws2.addRow(columns.map(c => c.name)))
+    darkHeader(ws2.addRow(activeExcelCols.map(c => c.name)))
 
     rows.forEach((row, i) => {
-      const r = ws2.addRow(columns.map(c => {
+      const r = ws2.addRow(activeExcelCols.map(c => {
         const v = row[c.id] ?? ''
         return v !== '' && !isNaN(parseFloat(v)) ? parseFloat(v) : v
       }))
@@ -131,7 +132,7 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
     })
 
     // Sums row
-    const sums = columns.map(col => {
+    const sums = activeExcelCols.map(col => {
       const nonempty = rows.filter(r => r[col.id] !== '' && r[col.id] != null)
       const nums = nonempty.map(r => parseFloat(r[col.id]))
       return nums.length > 0 && nums.every(n => !isNaN(n)) ? nums.reduce((a, b) => a + b, 0) : ''
@@ -293,11 +294,15 @@ export default function PrintView({ project, folder, slot, payroll, onClose }) {
           {/* ── Production data ── */}
           <div className={s.sectionLabel}>Production Data — {label}</div>
 
-          {rows.length === 0 ? (
-            <p className={s.noData}>No production data entered for this position.</p>
-          ) : (() => {
+          {(() => {
+            const activeColumns = columns.filter(col =>
+              rows.some(r => r[col.id] !== '' && r[col.id] != null)
+            )
+            if (rows.length === 0 || activeColumns.length === 0) {
+              return <p className={s.noData}>No production data entered for this position.</p>
+            }
             const sumCols = {}
-            columns.forEach(col => {
+            activeColumns.forEach(col => {
               const nonempty = rows.filter(r => r[col.id] !== '' && r[col.id] != null)
               if (nonempty.length === 0) return
               const nums = nonempty.map(r => parseFloat(r[col.id]))
@@ -308,19 +313,19 @@ export default function PrintView({ project, folder, slot, payroll, onClose }) {
               <div className={s.tableScroll}>
                 <table className={s.table}>
                   <thead>
-                    <tr>{columns.map(c => <th key={c.id}>{c.name}</th>)}</tr>
+                    <tr>{activeColumns.map(c => <th key={c.id}>{c.name}</th>)}</tr>
                   </thead>
                   <tbody>
                     {rows.map((row, i) => (
                       <tr key={row.id || i} className={i % 2 === 1 ? s.rowAlt : ''}>
-                        {columns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
+                        {activeColumns.map(c => <td key={c.id}>{row[c.id] ?? ''}</td>)}
                       </tr>
                     ))}
                   </tbody>
                   {hasSums && (
                     <tfoot>
                       <tr>
-                        {columns.map(c => (
+                        {activeColumns.map(c => (
                           <td key={c.id} className={s.sumCell}>
                             {sumCols[c.id] !== undefined ? Number(sumCols[c.id]).toLocaleString('en-US') : ''}
                           </td>
