@@ -60,7 +60,15 @@ function initGrid(columns, folderRows, position) {
   })
 }
 
-function DataGrid({ store, project, folder, position, mirrorPositions }) {
+function flattenFolders(folders, depth = 0, result = []) {
+  for (const f of folders) {
+    result.push({ folder: f, depth })
+    flattenFolders(f.folders || [], depth + 1, result)
+  }
+  return result
+}
+
+function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelChange, deleteSignal }) {
   const columns = project.columns || []
 
   const [grid, setGridState] = useState(() => initGrid(columns, folder.rows, position))
@@ -86,11 +94,37 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     store.setFolderRows(project.id, folderRef.current.id, update)
   }
 
-  // ── Selection ────────────────────────────────────────────────────────────────
+  // ── Cell selection ───────────────────────────────────────────────────────────
   const [sel, setSel] = useState(null)         // { r1, c1, r2, c2 } normalised
   const selRef        = useRef(null)
   const dragStart     = useRef(null)
   const mouseDown     = useRef(false)
+
+  // ── Row selection (copy-to-crew) ─────────────────────────────────────────────
+  const [rowSel, setRowSelInner] = useState(new Set())
+  const rowSelRef    = useRef(new Set())
+  const lastRowClick = useRef(null)
+
+  function setRowSel(next) {
+    rowSelRef.current = next
+    setRowSelInner(new Set(next))
+    onRowSelChange?.([...next], [...next].map(i => gridRef.current[i]).filter(Boolean))
+  }
+
+  function handleRowNumClick(e, rowIdx) {
+    e.stopPropagation()
+    if (e.shiftKey && lastRowClick.current !== null) {
+      const lo = Math.min(lastRowClick.current, rowIdx)
+      const hi = Math.max(lastRowClick.current, rowIdx)
+      const next = new Set(rowSelRef.current)
+      for (let i = lo; i <= hi; i++) next.add(i)
+      setRowSel(next)
+    } else {
+      const next = new Set(rowSelRef.current)
+      if (next.has(rowIdx)) { next.delete(rowIdx) } else { next.add(rowIdx); lastRowClick.current = rowIdx }
+      setRowSel(next)
+    }
+  }
 
   function normSel(r1, c1, r2, c2) {
     return { r1: Math.min(r1,r2), c1: Math.min(c1,c2), r2: Math.max(r1,r2), c2: Math.max(c1,c2) }
@@ -119,6 +153,22 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
     document.addEventListener('mouseup', onUp)
     return () => document.removeEventListener('mouseup', onUp)
   }, [])
+
+  // ── Delete selected rows (triggered by button signal) ───────────────────────
+  useEffect(() => {
+    if (!deleteSignal) return
+    const indices = rowSelRef.current
+    if (indices.size === 0) return
+    const kept = gridRef.current.filter((_, i) => !indices.has(i))
+    const blanks = Array.from({ length: indices.size }, () => {
+      const row = { id: uid() }
+      columns.forEach(c => { row[c.id] = '' })
+      return row
+    })
+    setRowSel(new Set())
+    lastRowClick.current = null
+    commitGrid([...kept, ...blanks])
+  }, [deleteSignal])
 
   // ── Copy / Paste / Undo ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -251,8 +301,14 @@ function DataGrid({ store, project, folder, position, mirrorPositions }) {
           </thead>
           <tbody>
             {grid.map((row, rowIdx) => (
-              <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''}`}>
-                <td className={s.rowNum}>{rowIdx + 1}</td>
+              <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''} ${rowSel.has(rowIdx) ? s.rowSelected : ''}`}>
+                <td
+                  className={`${s.rowNum} ${rowSel.has(rowIdx) ? s.rowNumSel : ''}`}
+                  onClick={e => handleRowNumClick(e, rowIdx)}
+                  title="Click to select row"
+                >
+                  {rowSel.has(rowIdx) ? '✓' : rowIdx + 1}
+                </td>
                 {columns.map((c, colIdx) => {
                   const selected = sel && rowIdx >= sel.r1 && rowIdx <= sel.r2 && colIdx >= sel.c1 && colIdx <= sel.c2
                   return (
@@ -312,9 +368,21 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [draft,        setDraft]        = useState(editPayroll || null)
   const [showLeft,     setShowLeft]     = useState(true)
   const [showRight,    setShowRight]    = useState(true)
+  const [copyRows,      setCopyRows]      = useState([])
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [copyTarget,    setCopyTarget]    = useState(null)
+  const [copyToPos,     setCopyToPos]     = useState('primero')
+  const [copiedMsg,     setCopiedMsg]     = useState('')
+  const [deleteSignal,  setDeleteSignal]  = useState(0)
 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
   const posKey = activeSlot.posKey
+
+  useEffect(() => { setCopyRows([]) }, [activeSlotId])
+
+  function handleRowSelChange(indices, rows) {
+    setCopyRows(rows)
+  }
 
   const columnSums = useMemo(() => {
     const rows = normalizeRows(folder.rows)
@@ -411,9 +479,28 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
                 onClick={() => { setAddAll(v => !v); setAddTwo(false) }}
                 title="Mirror edits to all positions"
               >{addAll ? '● All 3' : '○ All 3'}</button>
+              {copyRows.length > 0 && (
+                <>
+                  <button
+                    className={s.copyRowsBtn}
+                    onClick={() => { setCopyTarget(null); setCopyToPos(posKey); setShowCopyModal(true) }}
+                    title="Copy selected rows to another crew"
+                  >
+                    Copy {copyRows.length} row{copyRows.length !== 1 ? 's' : ''} →
+                  </button>
+                  <button
+                    className={s.deleteRowsBtn}
+                    onClick={() => setDeleteSignal(v => v + 1)}
+                    title="Delete selected rows"
+                  >
+                    Delete {copyRows.length}
+                  </button>
+                </>
+              )}
               <button className={s.panelToggleBtnLight} onClick={() => setShowLeft(false)} title="Hide production data">◀ Hide</button>
             </div>
           </div>
+          {copiedMsg && <div className={s.copiedBanner}>{copiedMsg}</div>}
           <DataGrid
             key={activeSlotId + '-' + clearKey}
             store={store}
@@ -421,6 +508,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             folder={folder}
             position={activeSlotId}
             mirrorPositions={addAll ? ['segundo', 'tercero'] : addTwo ? ['segundo'] : []}
+            onRowSelChange={handleRowSelChange}
+            deleteSignal={deleteSignal}
           />
         </div>}
 
@@ -508,6 +597,113 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
         onClose={() => setSummaryData(null)}
       />
     )}
+
+    {showCopyModal && (() => {
+      const posOpt = BASE_POSITIONS.find(b => b.posKey === copyToPos) || BASE_POSITIONS[0]
+
+      // Build flat list: folder headers + individual payroll rows
+      const items = []
+      function buildItems(folders, depth) {
+        for (const f of folders) {
+          items.push({ type: 'header', folder: f, depth })
+          for (const pr of (f.payrolls || [])) {
+            items.push({ type: 'payroll', folder: f, payroll: pr, depth: depth + 1 })
+          }
+          buildItems(f.folders || [], depth + 1)
+        }
+      }
+      buildItems(project.folders || [], 0)
+
+      const payrollItems = items.filter(i => i.type === 'payroll')
+
+      return (
+        <Modal
+          title={`Copy ${copyRows.length} row${copyRows.length !== 1 ? 's' : ''} to crew`}
+          onClose={() => setShowCopyModal(false)}
+          wide
+        >
+          {/* Which position in the target to land in */}
+          <div className={s.copyPosRow}>
+            <span className={s.copyPosLabel}>Into:</span>
+            {BASE_POSITIONS.map(base => (
+              <button
+                key={base.posKey}
+                className={`${s.copyPosBtn} ${copyToPos === base.posKey ? s.copyPosBtnOn : ''}`}
+                style={copyToPos === base.posKey ? { background: base.color, borderColor: base.color } : {}}
+                onClick={() => { setCopyToPos(base.posKey); setCopyTarget(null) }}
+              >
+                {base.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Crew list — one row per payroll, folder names as section headers */}
+          <div className={s.crewList}>
+            {payrollItems.length === 0
+              ? <p className={s.crewItemEmpty}>No saved payrolls in this project yet.</p>
+              : items.map(item => {
+                  if (item.type === 'header') {
+                    const hasChildren = items.some(i => i.type === 'payroll' && i.folder.id === item.folder.id)
+                      || (item.folder.folders || []).length > 0
+                    if (!hasChildren) return null
+                    return (
+                      <div key={item.folder.id} className={s.crewHeader}
+                        style={{ paddingLeft: `${12 + item.depth * 16}px` }}>
+                        {item.folder.name}
+                      </div>
+                    )
+                  }
+                  // type === 'payroll'
+                  const crewName = item.payroll.crewNames?.[copyToPos] || ''
+                  const isCurrent = item.payroll.id === editPayroll?.id
+                  if (isCurrent) {
+                    return (
+                      <div key={item.payroll.id} className={s.crewItemCurrent}
+                        style={{ paddingLeft: `${20 + item.depth * 16}px` }}>
+                        {crewName || item.folder.name}
+                        <span className={s.crewItemSub}> — current</span>
+                      </div>
+                    )
+                  }
+                  const isSelected = copyTarget?.payroll?.id === item.payroll.id
+                  return (
+                    <button key={item.payroll.id}
+                      className={`${s.crewItem} ${isSelected ? s.crewItemSel : ''}`}
+                      style={{ paddingLeft: `${20 + item.depth * 16}px` }}
+                      onClick={() => setCopyTarget({ folder: item.folder, payroll: item.payroll })}
+                    >
+                      {crewName
+                        ? <><strong>{crewName}</strong><span className={s.crewItemSub}> — {item.folder.name}</span></>
+                        : item.folder.name}
+                    </button>
+                  )
+                })
+            }
+          </div>
+
+          <div className={s.delFooter}>
+            <button className={s.btnCancel} onClick={() => setShowCopyModal(false)}>Cancel</button>
+            <button
+              className={s.btnSaveRow}
+              style={!copyTarget ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+              onClick={() => {
+                if (!copyTarget) return
+                const freshRows = copyRows.map(r => ({ ...r, id: uid() }))
+                store.appendPayrollRows(project.id, copyTarget.folder.id, copyTarget.payroll.id, freshRows, copyToPos)
+                setShowCopyModal(false)
+                const name = copyTarget.payroll.crewNames?.[copyToPos] || copyTarget.folder.name
+                setCopiedMsg(`✓ Copied to ${name} (${posOpt.label})!`)
+                setTimeout(() => setCopiedMsg(''), 2500)
+              }}
+            >
+              {copyTarget
+                ? `Copy → ${copyTarget.payroll.crewNames?.[copyToPos] || copyTarget.folder.name}`
+                : `Copy to ${posOpt.label} →`}
+            </button>
+          </div>
+        </Modal>
+      )
+    })()}
   </>
   )
 }

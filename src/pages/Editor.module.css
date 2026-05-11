@@ -105,8 +105,12 @@
 }
 .actionsHead { width: 36px; }
 .rowNumHead { width: 28px; text-align: center !important; }
-.rowNum { width: 28px; text-align: center; font-size: 10px; color: #ccc; padding: 0 4px !important; user-select: none; }
+.rowNum { width: 28px; text-align: center; font-size: 10px; color: #ccc; padding: 0 4px !important; user-select: none; cursor: pointer; }
+.rowNum:hover { color: #3949ab; background: rgba(57, 73, 171, 0.08); }
+.rowNumSel { color: #3949ab !important; font-weight: 800 !important; background: rgba(57, 73, 171, 0.18) !important; }
 .rowAlt td { background: #f8f9fb; }
+.dataRow.rowSelected td { background: rgba(57, 73, 171, 0.07); }
+.dataRow.rowAlt.rowSelected td { background: rgba(57, 73, 171, 0.1); }
 .table tbody td { padding: 0; border-bottom: 1px solid #e8e8e8; border-right: 1px solid #e8e8e8; color: #333; }
 .table tbody td:first-child { border-left: 1px solid #e8e8e8; }
 .table thead th { border-right: 1px solid rgba(255,255,255,0.1); }
@@ -283,6 +287,68 @@
 .printPosBtn { background: #fff; border: 1px solid #e0e0e0; border-radius: 7px; padding: 8px 18px; font-size: 13px; font-weight: 600; color: #666; cursor: pointer; }
 .printPosBtn:hover { border-color: #3949ab; color: #3949ab; }
 .printPosBtnOn { color: #fff !important; }
+
+/* Copy rows button (panel title) */
+.copyRowsBtn {
+  background: #3949ab; color: #fff; border: none;
+  border-radius: 5px; padding: 2px 9px; font-size: 10px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.copyRowsBtn:hover { background: #283593; }
+.deleteRowsBtn {
+  background: #c62828; color: #fff; border: none;
+  border-radius: 5px; padding: 2px 9px; font-size: 10px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.deleteRowsBtn:hover { background: #b71c1c; }
+
+/* Copied confirmation banner (left panel) */
+.copiedBanner {
+  background: #3949ab; color: #fff;
+  text-align: center; padding: 7px 14px; font-size: 12px; font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Crew picker modal */
+.crewList {
+  border: 1px solid #e8e8e8; border-radius: 8px;
+  margin: 10px 0 4px;
+  overflow: hidden;
+}
+.crewItem {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 12px; font-size: 13px; color: #333;
+  background: none; border: none; border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+}
+.crewItem:last-child { border-bottom: none; }
+.crewItem:hover { background: #f5f7ff; color: #3949ab; }
+.crewItemSel { background: #3949ab !important; color: #fff !important; }
+.crewItemEmpty { padding: 16px 12px; font-size: 12px; color: #bbb; text-align: center; }
+.crewHeader {
+  padding: 6px 12px 4px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #aaa; background: #f8f9fb;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Position toggle + crew list inside copy modal */
+.copyPosRow { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.copyPosLabel { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #bbb; white-space: nowrap; }
+.copyPosBtn {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 7px;
+  padding: 4px 12px; font-size: 12px; font-weight: 600; color: #666; cursor: pointer;
+}
+.copyPosBtn:hover { border-color: #3949ab; color: #3949ab; }
+.copyPosBtnOn { color: #fff !important; }
+.crewItemSub { font-size: 11px; color: #999; }
+.crewItemCurrent {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 12px; font-size: 13px;
+  color: #bbb; background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: default;
+}
 
 @media (max-width: 768px) {
   .page { height: auto; overflow: visible; }

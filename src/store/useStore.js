@@ -288,6 +288,30 @@ export function useStore() {
     }))
   }
 
+  function appendFolderRows(pid, fid, newRows, pos = 'primero') {
+    commit(_data.map(p => {
+      if (p.id !== pid) return p
+      return { ...p, folders: treeUpdate(p.folders || [], fid, f => {
+        const r = _normalizeRows(f.rows)
+        return { ...f, rows: { ...r, [pos]: [...(r[pos] || []), ...newRows] } }
+      })}
+    }))
+  }
+
+  function appendPayrollRows(pid, fid, payrollId, newRows, pos = 'primero') {
+    commit(_data.map(p => {
+      if (p.id !== pid) return p
+      return { ...p, folders: treeUpdate(p.folders || [], fid, f => ({
+        ...f,
+        payrolls: (f.payrolls || []).map(pr => {
+          if (pr.id !== payrollId) return pr
+          const base = _normalizeRows(pr.rows)
+          return { ...pr, rows: { ...base, [pos]: [...(base[pos] || []), ...newRows] } }
+        }),
+      }))}
+    }))
+  }
+
   function clearFolderRows(pid, fid) {
     commit(_data.map(p => {
       if (p.id !== pid) return p
@@ -372,7 +396,7 @@ export function useStore() {
     createProject, deleteProject,
     updateProjectColumns, updateProjectItems,
     createFolder, deleteFolder,
-    addFolderRow, updateFolderRow, deleteFolderRow, clearFolderRows,
+    addFolderRow, updateFolderRow, deleteFolderRow, clearFolderRows, appendFolderRows, appendPayrollRows,
     savePayroll, deletePayroll,
     saveFolderSummary,
     setFolderRows,
