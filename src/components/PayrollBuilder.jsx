@@ -362,9 +362,9 @@ export default function PayrollBuilder({
   }
 
   // ── Totals ────────────────────────────────────────────────────────────────
-  const sub1 = items.reduce((s, it) => s + it.amt1, 0)
-  const sub2 = items.reduce((s, it) => s + it.amt2, 0)
-  const sub3 = items.reduce((s, it) => s + it.amt3, 0)
+  const sub1 = items.filter(it => !it.onlyForSlot || it.onlyForSlot === 'primero').reduce((s, it) => s + (it.amt1 || 0), 0)
+  const sub2 = items.filter(it => !it.onlyForSlot || it.onlyForSlot === 'segundo').reduce((s, it) => s + (it.amt2 || 0), 0)
+  const sub3 = items.filter(it => !it.onlyForSlot || it.onlyForSlot === 'tercero').reduce((s, it) => s + (it.amt3 || 0), 0)
   const disc1 = (discounts.primero || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
   const disc2 = (discounts.segundo || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
   const disc3 = (discounts.tercero || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
@@ -375,7 +375,7 @@ export default function PayrollBuilder({
     if (slot.base) {
       return { sub: [sub1,sub2,sub3][parseInt(POS_IDX[slot.posKey])-1], disc: [disc1,disc2,disc3][parseInt(POS_IDX[slot.posKey])-1], tot: [tot1,tot2,tot3][parseInt(POS_IDX[slot.posKey])-1] }
     }
-    const sub  = items.reduce((s, it) => s + (it.extraSlots?.[slot.id]?.amt || 0), 0)
+    const sub  = items.filter(it => !it.onlyForSlot || it.onlyForSlot === slot.id).reduce((s, it) => s + (it.extraSlots?.[slot.id]?.amt || 0), 0)
     const disc = (discounts[slot.id] || []).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0)
     return { sub, disc, tot: sub - disc }
   }
