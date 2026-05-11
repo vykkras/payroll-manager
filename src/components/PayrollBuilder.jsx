@@ -24,13 +24,14 @@ function buildItems(configItems, columnSums) {
     const code = (it.code || '').trim().toLowerCase()
     const qty1 = columnSums?.primero?.[code] != null ? String(columnSums.primero[code]) : ''
     const qty2 = it.divBy2
-      ? qty1  // materials: same full amount as primero, user presses ÷2 to split
+      ? qty1
       : (columnSums?.segundo?.[code] != null ? String(columnSums.segundo[code]) : '')
     const qty3 = it.divBy2
-      ? ''    // tercero doesn't get materials
+      ? ''
       : (columnSums?.tercero?.[code] != null ? String(columnSums.tercero[code]) : '')
     return {
       ...it,
+      _iid: uid(),
       qty1, qty2, qty3,
       amt1: calcAmount(qty1, it.rate1), amt2: calcAmount(qty2, it.rate2), amt3: calcAmount(qty3, it.rate3),
       qty2manual: false,
@@ -39,10 +40,11 @@ function buildItems(configItems, columnSums) {
   })
 }
 function hydrateItems(configItems, savedItems) {
-  return (configItems || []).map(it => {
-    const saved = savedItems?.find(sv => sv.code === it.code) || {}
+  const base = (configItems || []).map(it => {
+    const saved = (savedItems || []).find(sv => sv.code === it.code && !sv.isCustom) || {}
     return {
       ...it,
+      _iid: saved._iid || uid(),
       rate1: saved.rate1 ?? it.rate1,
       rate2: saved.rate2 ?? it.rate2,
       rate3: saved.rate3 ?? it.rate3,
@@ -52,6 +54,8 @@ function hydrateItems(configItems, savedItems) {
       extraSlots: saved.extraSlots || {},
     }
   })
+  const custom = (savedItems || []).filter(sv => sv.isCustom).map(sv => ({ ...sv, _iid: sv._iid || uid() }))
+  return [...base, ...custom]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,6 +240,29 @@ export default function PayrollBuilder({
       updated.extraSlots = newExtraSlots
       return updated
     }))
+  }
+
+  function duplicateItem(idx) {
+    setItems(its => {
+      const copy = { ...its[idx], _iid: uid(), isCustom: true }
+      const next = [...its]
+      next.splice(idx + 1, 0, copy)
+      return next
+    })
+  }
+
+  function removeCustomItem(idx) {
+    setItems(its => its.filter((_, i) => i !== idx))
+  }
+
+  function setItemCode(idx, val) {
+    setItems(its => its.map((it, i) => i === idx ? { ...it, code: val } : it))
+  }
+  function setItemLabel(idx, val) {
+    setItems(its => its.map((it, i) => i === idx ? { ...it, label: val } : it))
+  }
+  function setItemUnit(idx, val) {
+    setItems(its => its.map((it, i) => i === idx ? { ...it, unit: val } : it))
   }
 
   function autoFillSegundo() {
@@ -454,6 +481,7 @@ export default function PayrollBuilder({
                 <th className={s.tr}>Rate</th>
                 <th className={s.tr}>Qty</th>
                 <th className={s.tr}>Amount</th>
+                <th className={s.actionTh}></th>
               </tr>
             </thead>
             <tbody>
@@ -464,10 +492,22 @@ export default function PayrollBuilder({
                 const amtVal  = getItemAmt(item)
                 const isAuto  = !isExtra && posIdx === '2' && !item.qty2manual
                 return (
-                  <tr key={idx} className={isNA ? s.naRow : ''}>
-                    <td className={s.code}>{item.code}</td>
-                    <td className={s.desc}>{item.label}</td>
-                    <td className={s.tc}><span className={s.unitTxt}>{item.unit}</span></td>
+                  <tr key={item._iid || idx} className={`${isNA ? s.naRow : ''} ${item.isCustom ? s.customRow : ''}`}>
+                    <td className={s.code}>
+                      {item.isCustom
+                        ? <input className={s.codeEdit} value={item.code} onChange={e => setItemCode(idx, e.target.value)} placeholder="CODE" />
+                        : item.code}
+                    </td>
+                    <td className={s.desc}>
+                      {item.isCustom
+                        ? <input className={s.descEdit} value={item.label} onChange={e => setItemLabel(idx, e.target.value)} placeholder="Description" />
+                        : item.label}
+                    </td>
+                    <td className={s.tc}>
+                      {item.isCustom
+                        ? <input className={s.unitEdit} value={item.unit || ''} onChange={e => setItemUnit(idx, e.target.value)} placeholder="u" />
+                        : <span className={s.unitTxt}>{item.unit}</span>}
+                    </td>
                     <td className={s.tc}>{item.divBy2 ? <span className={s.divBadge}>÷2</span> : null}</td>
                     <td className={s.tr}>
                       <input type="number" className={s.rateInput} value={rateVal ?? ''} onChange={e => setRate(idx, e.target.value)} placeholder="—" />
@@ -484,6 +524,12 @@ export default function PayrollBuilder({
                     </td>
                     <td className={`${s.tr} ${s.amount} ${!amtVal ? s.dim : ''}`}>
                       {amtVal ? fmtMoney(amtVal) : '—'}
+                    </td>
+                    <td className={s.actionCell}>
+                      <button className={s.dupBtn} onClick={() => duplicateItem(idx)} title="Duplicate line">⧉</button>
+                      {item.isCustom && (
+                        <button className={s.removeBtn} onClick={() => removeCustomItem(idx)} title="Remove line">✕</button>
+                      )}
                     </td>
                   </tr>
                 )
