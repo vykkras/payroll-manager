@@ -278,6 +278,24 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
     }
   }
 
+  // ── Grid filter ──────────────────────────────────────────────────────────────
+  const filterCols = columns.filter(c => c.filter)
+  const [gridFilter, setGridFilter] = useState({})
+  const hasActiveFilter = filterCols.some(c => gridFilter[c.id])
+
+  // Unique values per filter column (from non-empty rows)
+  const filterOptions = {}
+  filterCols.forEach(c => {
+    filterOptions[c.id] = [...new Set(
+      grid.map(r => r[c.id]).filter(v => v !== '' && v != null)
+    )].sort()
+  })
+
+  function isRowVisible(row) {
+    if (!hasActiveFilter) return true
+    return filterCols.every(c => !gridFilter[c.id] || row[c.id] === gridFilter[c.id])
+  }
+
   if (columns.length === 0) {
     return (
       <div className={s.tableWrap}>
@@ -291,6 +309,26 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
 
   return (
     <div className={s.tableWrap}>
+      {filterCols.length > 0 && (
+        <div className={s.filterBar}>
+          {filterCols.map(c => (
+            <div key={c.id} className={s.filterItem}>
+              <span className={s.filterLabel}>{c.name}</span>
+              <select
+                className={s.filterSelect}
+                value={gridFilter[c.id] || ''}
+                onChange={e => setGridFilter(f => ({ ...f, [c.id]: e.target.value }))}
+              >
+                <option value="">All</option>
+                {filterOptions[c.id].map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          ))}
+          {hasActiveFilter && (
+            <button className={s.filterClear} onClick={() => setGridFilter({})}>✕ Clear</button>
+          )}
+        </div>
+      )}
       <div className={s.tableScroll}>
         <table className={s.table}>
           <thead>
@@ -300,8 +338,10 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
             </tr>
           </thead>
           <tbody>
-            {grid.map((row, rowIdx) => (
-              <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''} ${rowSel.has(rowIdx) ? s.rowSelected : ''}`}>
+            {grid.map((row, rowIdx) => {
+              const visible = isRowVisible(row)
+              return (
+              <tr key={row.id} className={`${s.dataRow} ${rowIdx % 2 === 1 ? s.rowAlt : ''} ${rowSel.has(rowIdx) ? s.rowSelected : ''} ${!visible ? s.rowDimmed : ''}`}>
                 <td
                   className={`${s.rowNum} ${rowSel.has(rowIdx) ? s.rowNumSel : ''}`}
                   onClick={e => handleRowNumClick(e, rowIdx)}
@@ -330,7 +370,8 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
                   )
                 })}
               </tr>
-            ))}
+            )})}
+
           </tbody>
           {Object.keys(totals).length > 0 && (
             <tfoot>

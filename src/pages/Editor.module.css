@@ -91,6 +91,12 @@
   padding: 3px 8px; font-size: 11px; color: #aaa; cursor: pointer;
 }
 .clearFilters:hover { color: #c0392b; border-color: #c0392b; }
+.filterClear {
+  background: none; border: 1px solid #e0e0e0; border-radius: 5px;
+  padding: 3px 8px; font-size: 11px; color: #aaa; cursor: pointer;
+}
+.filterClear:hover { color: #c0392b; border-color: #c0392b; }
+.rowDimmed { opacity: 0.18; pointer-events: none; }
 .rowCount { font-size: 11px; color: #bbb; margin-left: auto; white-space: nowrap; }
 
 /* Table scroll area */
