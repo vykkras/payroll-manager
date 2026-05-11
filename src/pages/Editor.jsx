@@ -100,6 +100,9 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
   const dragStart     = useRef(null)
   const mouseDown     = useRef(false)
 
+  // ── Grid filter (must be declared before totals) ─────────────────────────────
+  const [gridFilter, setGridFilter] = useState({})
+
   // ── Row selection (copy-to-crew) ─────────────────────────────────────────────
   const [rowSel, setRowSelInner] = useState(new Set())
   const rowSelRef    = useRef(new Set())
@@ -223,16 +226,20 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
     return () => document.removeEventListener('keydown', onKey)
   }, [columns, position, mirrorPositions, store, project])
 
-  // ── Totals ───────────────────────────────────────────────────────────────────
+  // ── Totals (respects active filter) ─────────────────────────────────────────
   const totals = useMemo(() => {
+    const filterCols = columns.filter(c => c.filter)
+    const visibleRows = grid.filter(row =>
+      filterCols.every(c => !gridFilter[c.id] || row[c.id] === gridFilter[c.id])
+    )
     const t = {}
     columns.forEach(col => {
       if (!col.sum) return
-      const nums = grid.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
+      const nums = visibleRows.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
       if (nums.length > 0) t[col.id] = nums.reduce((a, b) => a + b, 0)
     })
     return t
-  }, [grid, columns])
+  }, [grid, columns, gridFilter])
 
   function handleChange(rowIdx, colId, val) {
     setGrid(prev => prev.map((r, i) => i === rowIdx ? { ...r, [colId]: val } : r))
@@ -280,7 +287,6 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
 
   // ── Grid filter ──────────────────────────────────────────────────────────────
   const filterCols = columns.filter(c => c.filter)
-  const [gridFilter, setGridFilter] = useState({})
   const hasActiveFilter = filterCols.some(c => gridFilter[c.id])
 
   // Unique values per filter column (from non-empty rows)
