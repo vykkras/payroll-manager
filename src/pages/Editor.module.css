@@ -69,6 +69,11 @@
   border-bottom: 3px solid transparent;
 }
 .slotAdd:hover { color: #3949ab; }
+.tabLabelInput {
+  background: transparent; border: none; border-bottom: 1px solid currentColor;
+  color: inherit; font: inherit; font-size: 12px; font-weight: 600;
+  padding: 0 2px; outline: none; width: 72px; text-align: center;
+}
 
 /* Table wrap */
 .tableWrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

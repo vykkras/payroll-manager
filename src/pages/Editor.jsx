@@ -14,10 +14,10 @@ const BASE_POSITIONS = [
 const POS_COLORS  = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
 const POS_LABELS  = { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
 
-function buildSlots(extraSlots) {
+function buildSlots(extraSlots, baseLabels) {
   const result = []
   BASE_POSITIONS.forEach(base => {
-    result.push({ ...base, base: true })
+    result.push({ ...base, base: true, label: (baseLabels && baseLabels[base.id]) || base.label })
     extraSlots.filter(e => e.posKey === base.posKey).forEach(e =>
       result.push({ id: e.id, posKey: e.posKey, label: e.label, color: POS_COLORS[e.posKey], base: false })
     )
@@ -399,8 +399,11 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
 
 // ── Main Editor component ─────────────────────────────────────────────────────
 export default function Editor({ store, project, folder, editPayroll, onBack }) {
-  const [extraSlots, setExtraSlots] = useState(() => editPayroll?.extraSlots || [])
-  const slots = buildSlots(extraSlots)
+  const [extraSlots,      setExtraSlots]      = useState(() => editPayroll?.extraSlots || [])
+  const [baseSlotLabels,  setBaseSlotLabels]  = useState(() =>
+    editPayroll?.baseSlotLabels || { primero: 'Primero', segundo: 'Segundo', tercero: 'Tercero' }
+  )
+  const slots = buildSlots(extraSlots, baseSlotLabels)
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
   const [all2Target,   setAll2Target]   = useState('segundo')
   const [addTwo,       setAddTwo]       = useState(false)
@@ -421,6 +424,8 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const [copyToPos,     setCopyToPos]     = useState('primero')
   const [copiedMsg,     setCopiedMsg]     = useState('')
   const [deleteSignal,  setDeleteSignal]  = useState(0)
+  const [editingTabId,    setEditingTabId]    = useState(null)
+  const [editingTabLabel, setEditingTabLabel] = useState('')
 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
   const posKey = activeSlot.posKey
@@ -460,9 +465,19 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
     setActiveSlotId(slot ? slot.posKey : 'primero')
   }
 
+  function handleRenameSlot(slotId, newLabel) {
+    const trimmed = (newLabel || '').trim()
+    if (slotId === 'primero' || slotId === 'segundo' || slotId === 'tercero') {
+      const fallback = BASE_POSITIONS.find(b => b.id === slotId)?.label || slotId
+      setBaseSlotLabels(prev => ({ ...prev, [slotId]: trimmed || fallback }))
+    } else {
+      setExtraSlots(prev => prev.map(s => s.id === slotId ? { ...s, label: trimmed || s.label } : s))
+    }
+  }
+
   function handlePayrollSave(payroll) {
     // Snapshot current production rows + active extra slots into the payroll
-    const payrollWithRows = { ...payroll, rows: folder.rows, extraSlots }
+    const payrollWithRows = { ...payroll, rows: folder.rows, extraSlots, baseSlotLabels }
     store.savePayroll(project.id, folder.id, payrollWithRows)
     setDraft(payrollWithRows)
     setSavedMsg(true)
@@ -501,8 +516,19 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
                   className={`${s.posTab} ${activeSlotId === slot.id ? s.posTabActive : ''}`}
                   style={activeSlotId === slot.id ? { '--tab-color': slot.color, borderBottomColor: slot.color, color: slot.color } : {}}
                   onClick={() => setActiveSlotId(slot.id)}
+                  onDoubleClick={e => { e.stopPropagation(); setEditingTabId(slot.id); setEditingTabLabel(slot.label) }}
                 >
-                  {slot.label}
+                  {editingTabId === slot.id ? (
+                    <input
+                      className={s.tabLabelInput}
+                      autoFocus
+                      value={editingTabLabel}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => setEditingTabLabel(e.target.value)}
+                      onBlur={() => { handleRenameSlot(slot.id, editingTabLabel); setEditingTabId(null) }}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { handleRenameSlot(slot.id, editingTabLabel); setEditingTabId(null) } }}
+                    />
+                  ) : slot.label}
                   {!slot.base && (
                     <span className={s.slotClose} onClick={e => { e.stopPropagation(); handleRemoveSlot(slot.id) }}>×</span>
                   )}
@@ -581,6 +607,7 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
               slots={slots}
               activeSlotId={activeSlotId}
               onSlotChange={setActiveSlotId}
+              onSlotLabelChange={handleRenameSlot}
               all2Target={all2Target}
               onAll2TargetChange={setAll2Target}
               onSave={handlePayrollSave}

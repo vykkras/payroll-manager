@@ -73,6 +73,7 @@ export default function PayrollBuilder({
   onSlotChange,
   all2Target: all2TargetProp,
   onAll2TargetChange,
+  onSlotLabelChange,
   // legacy single-position props (standalone use)
   position: positionProp,
   onPositionChange,
@@ -96,6 +97,16 @@ export default function PayrollBuilder({
 
   const activeSlot = slots.find(s => s.id === activeSlotId) || slots[0]
   const isExtra    = !activeSlot.base
+
+  // ── Tab label inline editing ──────────────────────────────────────────────
+  const [editingTabId,    setEditingTabId]    = useState(null)
+  const [editingTabLabel, setEditingTabLabel] = useState('')
+
+  function confirmTabRename(slotId) {
+    if (editingTabLabel.trim()) onSlotLabelChange?.(slotId, editingTabLabel.trim())
+    setEditingTabId(null)
+    setEditingTabLabel('')
+  }
   const posKey     = activeSlot.posKey || activeSlot.id
   const posIdx     = POS_IDX[posKey]
   const posColor   = POS_COLORS[posKey] || '#3949ab'
@@ -444,8 +455,24 @@ export default function PayrollBuilder({
               style={isActive ? { '--tab-color': slot.color } : {}}
               onClick={() => setActiveSlot(slot.id)}
             >
-              <span className={s.posLabel}>{slot.label}</span>
-              {slot.base && <span className={s.posSub}>{slot.sub}</span>}
+              {editingTabId === slot.id ? (
+                <input
+                  className={s.tabLabelInput}
+                  autoFocus
+                  value={editingTabLabel}
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => setEditingTabLabel(e.target.value)}
+                  onBlur={() => confirmTabRename(slot.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') confirmTabRename(slot.id) }}
+                />
+              ) : (
+                <span
+                  className={s.posLabel}
+                  onDoubleClick={e => { e.stopPropagation(); setEditingTabId(slot.id); setEditingTabLabel(slot.label) }}
+                  title="Double-click to rename"
+                >{slot.label}</span>
+              )}
+              {slot.base && editingTabId !== slot.id && <span className={s.posSub}>{slot.sub}</span>}
               <span className={s.posAmt}>{fmtMoney(tot)}</span>
             </button>
           )
