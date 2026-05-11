@@ -244,7 +244,20 @@ export default function PayrollBuilder({
 
   function duplicateItem(idx) {
     setItems(its => {
-      const copy = { ...its[idx], _iid: uid(), isCustom: true }
+      const original = its[idx]
+      const copy = { ...original, _iid: uid(), isCustom: true, onlyForSlot: activeSlotId }
+      // Zero out every position except the active one so other tabs are unaffected
+      if (!isExtra) {
+        if (posIdx !== '1') { copy.qty1 = ''; copy.amt1 = 0 }
+        if (posIdx !== '2') { copy.qty2 = ''; copy.amt2 = 0; copy.qty2manual = true }
+        if (posIdx !== '3') { copy.qty3 = ''; copy.amt3 = 0 }
+        copy.extraSlots = {}
+      } else {
+        copy.qty1 = ''; copy.amt1 = 0
+        copy.qty2 = ''; copy.amt2 = 0; copy.qty2manual = true
+        copy.qty3 = ''; copy.amt3 = 0
+        copy.extraSlots = { [activeSlotId]: original.extraSlots?.[activeSlotId] || { qty: '', amt: 0 } }
+      }
       const next = [...its]
       next.splice(idx + 1, 0, copy)
       return next
@@ -486,6 +499,7 @@ export default function PayrollBuilder({
             </thead>
             <tbody>
               {items.map((item, idx) => {
+                if (item.onlyForSlot && item.onlyForSlot !== activeSlotId) return null
                 const rateVal = item[`rate${posIdx}`]
                 const isNA    = rateVal === null || rateVal === undefined || rateVal === ''
                 const qtyVal  = getItemQty(item)
