@@ -43,6 +43,121 @@ function buildCrewRows(payrolls) {
   return rows
 }
 
+async function downloadFolderExcel({ project, folder, payrolls }) {
+  const crews        = buildCrewRows(payrolls)
+  const payrollTotal = crews.reduce((s, c) => s + c.total, 0)
+  const incomeLines  = folder.summary?.incomeLines || []
+  const incomeTotal  = incomeLines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)
+  const hasSummary   = incomeLines.some(l => l.amount)
+  const pct          = incomeTotal > 0 ? (payrollTotal / incomeTotal) * 100 : null
+
+  const ExcelJS  = (await import('exceljs')).default
+  const wb       = new ExcelJS.Workbook()
+  wb.creator     = 'DC Cable Payroll Manager'
+
+  const dark      = '1A1A2E'
+  const lightGray = 'F8F8F8'
+  const headerTxt = 'B0BAD4'
+  const medBorder = { style: 'medium', color: { argb: 'FF' + dark } }
+  const thinB     = { style: 'thin',   color: { argb: 'FFE0E0E0' } }
+
+  function applyBorder(cell) { cell.border = { top: thinB, left: thinB, bottom: thinB, right: thinB } }
+  function darkHeader(row) {
+    row.height = 22
+    row.eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + dark } }
+      cell.font = { bold: true, color: { argb: 'FF' + headerTxt }, size: 10, name: 'Arial' }
+      cell.alignment = { vertical: 'middle', horizontal: 'left' }
+      applyBorder(cell)
+    })
+  }
+
+  const ws = wb.addWorksheet('Week Summary')
+  ws.columns = [{ width: 14 }, { width: 26 }, { width: 18 }, { width: 16 }]
+
+  // Title block
+  const r1 = ws.addRow(['DC Cable — Payroll Summary'])
+  r1.height = 28
+  r1.getCell(1).font = { bold: true, size: 18, color: { argb: 'FF' + dark }, name: 'Arial' }
+
+  const r2 = ws.addRow([project.name])
+  r2.getCell(1).font = { bold: true, size: 13, name: 'Arial' }
+  const r3 = ws.addRow([folder.name])
+  r3.getCell(1).font = { size: 11, color: { argb: 'FF888888' }, name: 'Arial' }
+
+  ws.addRow([])
+
+  // Stats block
+  const s1 = ws.addRow(['Total Payroll', payrollTotal])
+  s1.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+  s1.getCell(2).font = { bold: true, size: 13, name: 'Arial' }
+  s1.getCell(2).numFmt = '$#,##0.00'
+
+  if (hasSummary) {
+    const s2 = ws.addRow(['Total Income', incomeTotal])
+    s2.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+    s2.getCell(2).numFmt = '$#,##0.00'
+
+    if (pct !== null) {
+      const s3 = ws.addRow(['Payroll %', pct / 100])
+      s3.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+      s3.getCell(2).numFmt = '0.0%'
+      s3.getCell(2).font = { bold: true, color: { argb: pct > 40 ? 'FFC0392B' : pct > 30 ? 'FFE65100' : 'FF2E7D32' }, name: 'Arial' }
+    }
+  }
+
+  ws.addRow([])
+
+  // Crew rows
+  darkHeader(ws.addRow(['Position', 'Crew Member', 'Period', 'Total']))
+
+  const dataStartRow = ws.rowCount + 1
+  crews.forEach((c, i) => {
+    const hex = (c.color || '#3949ab').replace('#', '').toUpperCase()
+    const row = ws.addRow([c.label, c.crewName, c.period || '', c.total])
+    row.height = 18
+    row.getCell(1).font = { bold: true, color: { argb: 'FF' + hex }, size: 10, name: 'Arial' }
+    row.getCell(4).numFmt = '$#,##0.00'
+    if (i % 2 === 1) row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
+    row.eachCell(c => applyBorder(c))
+  })
+  const dataEndRow = ws.rowCount
+
+  // Total row with SUM formula
+  const totRow = ws.addRow(['', 'Total', '', 0])
+  totRow.getCell(4).value = { formula: `SUM(D${dataStartRow}:D${dataEndRow})` }
+  totRow.getCell(2).font = { bold: true, size: 12, name: 'Arial' }
+  totRow.getCell(2).border = { top: medBorder }
+  totRow.getCell(4).font = { bold: true, size: 14, color: { argb: 'FF' + dark }, name: 'Arial' }
+  totRow.getCell(4).numFmt = '$#,##0.00'
+  totRow.getCell(4).border = { top: medBorder }
+  totRow.height = 26
+
+  // Income detail if present
+  if (hasSummary && incomeLines.filter(l => l.amount).length > 0) {
+    ws.addRow([])
+    ws.addRow([])
+    const sec = ws.addRow(['Income Detail'])
+    sec.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF' + dark }, name: 'Arial' }
+    darkHeader(ws.addRow(['Description', 'Amount']))
+    incomeLines.filter(l => l.amount).forEach(l => {
+      const dr = ws.addRow([l.label || '—', parseFloat(l.amount) || 0])
+      dr.getCell(2).numFmt = '$#,##0.00'
+      dr.height = 18
+      dr.eachCell(c => applyBorder(c))
+    })
+  }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url    = URL.createObjectURL(blob)
+  const a      = document.createElement('a')
+  a.href       = url
+  a.download   = `WeekSummary---${project.name}---${folder.name}.xlsx`.replace(/[/\\:*?"<>|]/g, '-')
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function FolderPrint({ project, folder, payrolls, onClose }) {
   useEffect(() => {
     document.body.classList.add('print-active')
@@ -62,6 +177,7 @@ export default function FolderPrint({ project, folder, payrolls, onClose }) {
       <div className={s.toolbar}>
         <span className={s.toolbarTitle}>Print — {folder.name}</span>
         <div className={s.toolbarRight}>
+          <button className={s.btnExcel} onClick={() => downloadFolderExcel({ project, folder, payrolls })}>⬇ Excel</button>
           <button className={s.btnPrint} onClick={() => window.print()}>🖨 Print</button>
           <button className={s.btnClose} onClick={onClose}>✕ Close</button>
         </div>
