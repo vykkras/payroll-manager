@@ -16,6 +16,12 @@ function normalizeRows(rows, key) {
   return rows[key] || []
 }
 
+function colToLetter(n) {
+  let result = ''
+  while (n > 0) { n--; result = String.fromCharCode(65 + (n % 26)) + result; n = Math.floor(n / 26) }
+  return result
+}
+
 async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, crewName, period, activeItems, discounts, subtotal, total, columns, rows, color }) {
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
@@ -74,12 +80,14 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   // Column headers
   darkHeader(ws.addRow(['Code', 'Description', 'Unit', 'Qty', 'Rate', 'Amount']))
 
-  // Item rows
+  // Item rows — Amount column uses formula =Qty*Rate
+  const itemStartRow = ws.rowCount + 1
   activeItems.forEach((it, i) => {
-    const qty = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
-    const amt = isExtra ? it.extraSlots?.[slot.id]?.amt : it[`amt${posIdx}`]
+    const qty  = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
     const rate = it[`rate${posIdx}`]
-    const row = ws.addRow([it.code || '', it.label, it.unit || '', parseFloat(qty) || 0, parseFloat(rate) || 0, parseFloat(amt) || 0])
+    const row  = ws.addRow([it.code || '', it.label, it.unit || '', parseFloat(qty) || 0, parseFloat(rate) || 0, 0])
+    const rn   = row.number
+    row.getCell(6).value = { formula: `D${rn}*E${rn}` }
     row.height = 18
     if (i % 2 === 1) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
     row.getCell(1).font = { bold: true, color: { argb: 'FF' + hexColor }, size: 10, name: 'Arial' }
@@ -87,17 +95,29 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
     row.getCell(6).numFmt = '$#,##0.00'
     row.eachCell(c => applyBorder(c))
   })
+  const itemEndRow = ws.rowCount
 
   ws.addRow([])
 
-  // Subtotal + discounts
+  // Subtotal + discounts + total — all use formulas
   const medBorder = { style: 'medium', color: { argb: 'FF' + dark } }
-  if (discounts.some(d => d.label || d.amount)) {
-    const sr = ws.addRow(['', '', '', '', 'Subtotal', parseFloat(subtotal) || 0])
-    sr.getCell(5).font = { size: 11, color: { argb: 'FF555555' }, name: 'Arial' }
+  const hasDiscounts = discounts.some(d => d.label || d.amount)
+
+  let subtotalRowNum = null
+  let discRowStart   = null
+  let discRowEnd     = null
+
+  if (hasDiscounts) {
+    const sr = ws.addRow(['', '', '', '', 'Subtotal', 0])
+    subtotalRowNum = sr.number
+    sr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})` }
+    sr.getCell(5).font  = { size: 11, color: { argb: 'FF555555' }, name: 'Arial' }
     sr.getCell(6).numFmt = '$#,##0.00'
-    discounts.filter(d => d.label || d.amount).forEach(d => {
+
+    discounts.filter(d => d.label || d.amount).forEach((d, i) => {
       const dr = ws.addRow(['', '', '', '', d.label || 'Discount', -(parseFloat(d.amount) || 0)])
+      if (i === 0) discRowStart = dr.number
+      discRowEnd = dr.number
       dr.getCell(5).font = { size: 11, color: { argb: 'FFC0392B' }, name: 'Arial' }
       dr.getCell(6).font = { size: 11, color: { argb: 'FFC0392B' }, name: 'Arial' }
       dr.getCell(6).numFmt = '$#,##0.00'
@@ -105,7 +125,12 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   }
 
   // Total row
-  const tr = ws.addRow(['', '', '', '', `Total — ${slot.label}`, parseFloat(total) || 0])
+  const tr = ws.addRow(['', '', '', '', `Total — ${slot.label}`, 0])
+  if (hasDiscounts && subtotalRowNum != null && discRowStart != null) {
+    tr.getCell(6).value = { formula: `F${subtotalRowNum}+SUM(F${discRowStart}:F${discRowEnd})` }
+  } else {
+    tr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})` }
+  }
   tr.height = 26
   tr.getCell(5).font = { bold: true, size: 13, name: 'Arial' }
   tr.getCell(5).border = { top: medBorder }
@@ -121,6 +146,7 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
 
     darkHeader(ws2.addRow(activeExcelCols.map(c => c.name)))
 
+    const dataStartRow = ws2.rowCount + 1
     rows.forEach((row, i) => {
       const r = ws2.addRow(activeExcelCols.map(c => {
         const v = row[c.id] ?? ''
@@ -130,19 +156,20 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
       if (i % 2 === 1) r.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
       r.eachCell(c => applyBorder(c))
     })
+    const dataEndRow = ws2.rowCount
 
-    // Sums row
-    const sums = activeExcelCols.map(col => {
-      const nonempty = rows.filter(r => r[col.id] !== '' && r[col.id] != null)
-      const nums = nonempty.map(r => parseFloat(r[col.id]))
-      return nums.length > 0 && nums.every(n => !isNaN(n)) ? nums.reduce((a, b) => a + b, 0) : ''
-    })
-    const sumRow = ws2.addRow(sums)
+    // Sums row — numeric columns use SUM formula
+    const sumRow = ws2.addRow(activeExcelCols.map(() => 0))
     sumRow.height = 20
-    sumRow.eachCell(cell => {
-      cell.font = { bold: true, size: 11, name: 'Arial' }
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' } }
+    activeExcelCols.forEach((col, colIdx) => {
+      const isNumCol = rows.some(r => r[col.id] !== '' && r[col.id] != null && !isNaN(parseFloat(r[col.id])))
+      const cell = sumRow.getCell(colIdx + 1)
+      const letter = colToLetter(colIdx + 1)
+      cell.value = isNumCol ? { formula: `SUM(${letter}${dataStartRow}:${letter}${dataEndRow})` } : ''
+      cell.font  = { bold: true, size: 11, name: 'Arial' }
+      cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' } }
       cell.border = { top: medBorder, bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } }, left: { style: 'thin', color: { argb: 'FFE0E0E0' } }, right: { style: 'thin', color: { argb: 'FFE0E0E0' } } }
+      if (isNumCol) cell.numFmt = '#,##0.##'
     })
   }
 
