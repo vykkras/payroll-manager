@@ -436,21 +436,6 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
     setCopyRows(rows)
   }
 
-  const columnSums = useMemo(() => {
-    const rows = normalizeRows(folder.rows)
-    const result = {}
-    ;['primero', 'segundo', 'tercero'].forEach(pos => {
-      const posRows = rows[pos] || []
-      const sums = {}
-      ;(project.columns || []).forEach(col => {
-        const nums = posRows.map(r => parseFloat(r[col.id])).filter(n => !isNaN(n))
-        if (nums.length > 0) sums[col.name.trim().toLowerCase()] = nums.reduce((a, b) => a + b, 0)
-      })
-      result[pos] = sums
-    })
-    return result
-  }, [folder.rows, project.columns])
-
   function handleAddSlot(posKey) {
     const slotId = uid()
     const existing = extraSlots.filter(s => s.posKey === posKey).length
@@ -603,7 +588,6 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
               config={{ items: project.items || [] }}
               editPayroll={draft}
               defaultPeriod={folder.name}
-              columnSums={columnSums}
               slots={slots}
               activeSlotId={activeSlotId}
               onSlotChange={setActiveSlotId}

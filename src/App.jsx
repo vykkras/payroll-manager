@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore, getData, treeFind, treeParentId } from './store/useStore'
 import Home        from './pages/Home'
 import ProjectPage from './pages/ProjectPage'
@@ -31,18 +31,25 @@ function routeToHash(route, section) {
 
 export default function App() {
   const store = useStore()
+  const ignoreHashChange = useRef(false)
 
   const parsed = parseHash()
   const [route,   setRouteState] = useState({ page: parsed.page, pid: parsed.pid, fid: parsed.fid, sheetId: parsed.sheetId, editPayroll: null })
   const [section, setSection]    = useState(parsed._section || 'payrolls')
 
+  function setHash(hash) {
+    ignoreHashChange.current = true
+    window.location.hash = hash
+  }
+
   function setRoute(r) {
     setRouteState(r)
-    window.location.hash = routeToHash(r, section)
+    setHash(routeToHash(r, section))
   }
 
   useEffect(() => {
     function onHashChange() {
+      if (ignoreHashChange.current) { ignoreHashChange.current = false; return }
       const p = parseHash()
       setRouteState({ page: p.page, pid: p.pid, fid: p.fid, sheetId: p.sheetId, editPayroll: null })
       if (p._section) setSection(p._section)
@@ -53,7 +60,7 @@ export default function App() {
 
   useEffect(() => {
     const expected = routeToHash(route, section)
-    if (window.location.hash !== expected) window.location.hash = expected
+    if (window.location.hash !== expected) setHash(expected)
   }, [section])
 
   const goHome    = ()         => setRoute({ page: 'home',    pid: null, fid: null, sheetId: null, editPayroll: null })
@@ -68,7 +75,7 @@ export default function App() {
   function goEditorWithPayroll(pid, fid, payroll) {
     store.setFolderRows(pid, fid, payroll.rows || null)
     setRouteState({ page: 'editor', pid, fid, sheetId: null, editPayroll: payroll })
-    window.location.hash = `#/project/${pid}/editor/${fid}`
+    setHash(`#/project/${pid}/editor/${fid}`)
   }
 
   const liveData = getData()
@@ -85,11 +92,11 @@ export default function App() {
   return (
     <>
       {route.page === 'home' && section === 'employees' && (
-        <Employees section={section} onSectionChange={s => { setSection(s); window.location.hash = s === 'employees' ? '#/employees' : '#/' }} />
+        <Employees section={section} onSectionChange={s => { setSection(s); setHash(s === 'employees' ? '#/employees' : '#/') }} />
       )}
 
       {route.page === 'home' && section === 'payrolls' && (
-        <Home store={store} onOpenProject={goProject} section={section} onSectionChange={s => { setSection(s); window.location.hash = s === 'employees' ? '#/employees' : '#/' }} />
+        <Home store={store} onOpenProject={goProject} section={section} onSectionChange={s => { setSection(s); setHash(s === 'employees' ? '#/employees' : '#/') }} />
       )}
 
       {route.page === 'project' && project && (
