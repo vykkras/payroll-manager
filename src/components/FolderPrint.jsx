@@ -125,7 +125,7 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
 
   // Total row with SUM formula
   const totRow = ws.addRow(['', 'Total', '', 0])
-  totRow.getCell(4).value = { formula: `SUM(D${dataStartRow}:D${dataEndRow})` }
+  totRow.getCell(4).value = { formula: `SUM(D${dataStartRow}:D${dataEndRow})`, result: payrollTotal }
   totRow.getCell(2).font = { bold: true, size: 12, name: 'Arial' }
   totRow.getCell(2).border = { top: medBorder }
   totRow.getCell(4).font = { bold: true, size: 14, color: { argb: 'FF' + dark }, name: 'Arial' }

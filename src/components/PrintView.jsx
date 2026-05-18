@@ -85,9 +85,11 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   activeItems.forEach((it, i) => {
     const qty  = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
     const rate = it[`rate${posIdx}`]
-    const row  = ws.addRow([it.code || '', it.label, it.unit || '', parseFloat(qty) || 0, parseFloat(rate) || 0, 0])
+    const qtyNum  = parseFloat(qty)  || 0
+    const rateNum = parseFloat(rate) || 0
+    const row  = ws.addRow([it.code || '', it.label, it.unit || '', qtyNum, rateNum, 0])
     const rn   = row.number
-    row.getCell(6).value = { formula: `D${rn}*E${rn}` }
+    row.getCell(6).value = { formula: `D${rn}*E${rn}`, result: qtyNum * rateNum }
     row.height = 18
     if (i % 2 === 1) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
     row.getCell(1).font = { bold: true, color: { argb: 'FF' + hexColor }, size: 10, name: 'Arial' }
@@ -110,7 +112,7 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   if (hasDiscounts) {
     const sr = ws.addRow(['', '', '', '', 'Subtotal', 0])
     subtotalRowNum = sr.number
-    sr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})` }
+    sr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})`, result: parseFloat(subtotal) || 0 }
     sr.getCell(5).font  = { size: 11, color: { argb: 'FF555555' }, name: 'Arial' }
     sr.getCell(6).numFmt = '$#,##0.00'
 
@@ -127,9 +129,9 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   // Total row
   const tr = ws.addRow(['', '', '', '', `Total — ${slot.label}`, 0])
   if (hasDiscounts && subtotalRowNum != null && discRowStart != null) {
-    tr.getCell(6).value = { formula: `F${subtotalRowNum}+SUM(F${discRowStart}:F${discRowEnd})` }
+    tr.getCell(6).value = { formula: `F${subtotalRowNum}+SUM(F${discRowStart}:F${discRowEnd})`, result: parseFloat(total) || 0 }
   } else {
-    tr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})` }
+    tr.getCell(6).value = { formula: `SUM(F${itemStartRow}:F${itemEndRow})`, result: parseFloat(total) || 0 }
   }
   tr.height = 26
   tr.getCell(5).font = { bold: true, size: 13, name: 'Arial' }
@@ -165,7 +167,10 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
       const isNumCol = rows.some(r => r[col.id] !== '' && r[col.id] != null && !isNaN(parseFloat(r[col.id])))
       const cell = sumRow.getCell(colIdx + 1)
       const letter = colToLetter(colIdx + 1)
-      cell.value = isNumCol ? { formula: `SUM(${letter}${dataStartRow}:${letter}${dataEndRow})` } : ''
+      const colSum = isNumCol
+        ? rows.reduce((acc, r) => acc + (parseFloat(r[col.id]) || 0), 0)
+        : 0
+      cell.value = isNumCol ? { formula: `SUM(${letter}${dataStartRow}:${letter}${dataEndRow})`, result: colSum } : ''
       cell.font  = { bold: true, size: 11, name: 'Arial' }
       cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' } }
       cell.border = { top: medBorder, bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } }, left: { style: 'thin', color: { argb: 'FFE0E0E0' } }, right: { style: 'thin', color: { argb: 'FFE0E0E0' } } }

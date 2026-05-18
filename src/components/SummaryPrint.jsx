@@ -74,7 +74,7 @@ async function downloadSummaryExcel({ project, folder, summary }) {
       : ws.addRow([slot.label, slot.crewName || '—', slot.total || 0])
     const rn = row.number
     if (hasAnyDisc) {
-      row.getCell(5).value = { formula: `C${rn}-D${rn}` }
+      row.getCell(5).value = { formula: `C${rn}-D${rn}`, result: slot.total || 0 }
       row.getCell(3).numFmt = money
       row.getCell(4).numFmt = money
       row.getCell(5).numFmt = money
@@ -95,17 +95,20 @@ async function downloadSummaryExcel({ project, folder, summary }) {
     : ws.addRow(['', 'Total Payroll', 0])
   totRow.height = 26
   totRow.getCell(2).font = { bold: true, size: 12, name: 'Arial' }
+  const grandTotal = slots.reduce((acc, sl) => acc + (sl.total      || 0), 0)
+  const grandSub   = slots.reduce((acc, sl) => acc + (sl.subtotal   || 0), 0)
+  const grandDisc  = slots.reduce((acc, sl) => acc + (sl.deductions || 0), 0)
   if (hasAnyDisc) {
-    totRow.getCell(3).value = { formula: `SUM(C${dataStartRow}:C${dataEndRow})` }
-    totRow.getCell(4).value = { formula: `SUM(D${dataStartRow}:D${dataEndRow})` }
-    totRow.getCell(5).value = { formula: `SUM(E${dataStartRow}:E${dataEndRow})` }
+    totRow.getCell(3).value = { formula: `SUM(C${dataStartRow}:C${dataEndRow})`, result: grandSub }
+    totRow.getCell(4).value = { formula: `SUM(D${dataStartRow}:D${dataEndRow})`, result: grandDisc }
+    totRow.getCell(5).value = { formula: `SUM(E${dataStartRow}:E${dataEndRow})`, result: grandTotal }
     totRow.getCell(3).numFmt = money
     totRow.getCell(4).numFmt = money
     totRow.getCell(5).numFmt = money
     totRow.getCell(5).font = { bold: true, size: 14, color: { argb: 'FF' + dark }, name: 'Arial' }
     totRow.getCell(5).border = { top: medBorder }
   } else {
-    totRow.getCell(3).value = { formula: `SUM(C${dataStartRow}:C${dataEndRow})` }
+    totRow.getCell(3).value = { formula: `SUM(C${dataStartRow}:C${dataEndRow})`, result: grandTotal }
     totRow.getCell(3).numFmt = money
     totRow.getCell(3).font = { bold: true, size: 14, color: { argb: 'FF' + dark }, name: 'Arial' }
     totRow.getCell(3).border = { top: medBorder }
