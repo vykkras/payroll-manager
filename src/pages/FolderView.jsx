@@ -24,6 +24,176 @@ const POS = [
 ]
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
 const POS_BG    = { primero: '#e8eaf6', segundo: '#e8f5e9', tercero: '#fff3e0' }
+const POS_IDX   = { primero: '1',       segundo: '2',       tercero: '3'       }
+
+function normalizeRows(rows, key) {
+  if (!rows) return []
+  if (Array.isArray(rows)) return key === 'primero' ? rows : []
+  return rows[key] || []
+}
+
+async function downloadSlotExcel({ project, folder, payroll, slot }) {
+  const posIdx   = POS_IDX[slot.posKey]
+  const isExtra  = !slot.base
+  const crewName = payroll.crewNames?.[slot.id] || '—'
+  const period   = payroll.period || ''
+  const color    = slot.color || POS_COLOR[slot.posKey] || '#3949ab'
+
+  const rawDisc  = payroll.discounts
+  const discounts = Array.isArray(rawDisc) ? rawDisc : (rawDisc?.[slot.id] || [])
+
+  let subtotal, total
+  if (isExtra) {
+    subtotal = (payroll.items || []).reduce((sum, it) => sum + (it.extraSlots?.[slot.id]?.amt || 0), 0)
+    const disc = discounts.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+    total = subtotal - disc
+  } else {
+    subtotal = payroll[`subtotal${posIdx}`] || 0
+    total    = payroll[`total${posIdx}`]    || 0
+  }
+
+  const columns = project.columns || []
+  const rows    = normalizeRows(payroll.rows ?? folder.rows, slot.id)
+  const activeItems = (payroll.items || []).filter(it => {
+    const q = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
+    return q !== '' && q !== undefined && q !== null && parseFloat(q) !== 0
+  })
+
+  const ExcelJS   = (await import('exceljs')).default
+  const wb        = new ExcelJS.Workbook()
+  wb.creator      = 'DC Cable Payroll Manager'
+  const hexColor  = color.replace('#', '').toUpperCase()
+  const dark      = '1A1A2E'
+  const lightGray = 'F8F8F8'
+  const headerTxt = 'B0BAD4'
+
+  function applyBorder(cell) {
+    const b = { style: 'thin', color: { argb: 'FFE0E0E0' } }
+    cell.border = { top: b, left: b, bottom: b, right: b }
+  }
+  function darkHeader(row) {
+    row.height = 22
+    row.eachCell(cell => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + dark } }
+      cell.font = { bold: true, color: { argb: 'FF' + headerTxt }, size: 10, name: 'Arial' }
+      cell.alignment = { vertical: 'middle', horizontal: 'left' }
+      applyBorder(cell)
+    })
+  }
+
+  const ws = wb.addWorksheet('Payroll')
+  ws.columns = [{ width: 10 }, { width: 34 }, { width: 8 }, { width: 10 }, { width: 14 }, { width: 16 }]
+
+  const r1 = ws.addRow(['DC Cable — Payroll Manager'])
+  r1.height = 28
+  r1.getCell(1).font = { bold: true, size: 18, color: { argb: 'FF' + dark }, name: 'Arial' }
+  const r2 = ws.addRow([project.name])
+  r2.getCell(1).font = { bold: true, size: 13, name: 'Arial' }
+  const r3 = ws.addRow([folder.name])
+  r3.getCell(1).font = { size: 11, color: { argb: 'FF888888' }, name: 'Arial' }
+  ws.addRow([])
+
+  const meta = ws.addRow(['Position', slot.label, '', 'Period', period])
+  meta.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+  meta.getCell(2).font = { bold: true, size: 10, color: { argb: 'FF' + hexColor }, name: 'Arial' }
+  meta.getCell(4).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+  const crewRow = ws.addRow(['Crew', crewName])
+  crewRow.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFAAAAAA' }, name: 'Arial' }
+  crewRow.getCell(2).font = { bold: true, size: 11, name: 'Arial' }
+  ws.addRow([])
+
+  darkHeader(ws.addRow(['Code', 'Description', 'Unit', 'Qty', 'Rate', 'Amount']))
+
+  const itemStartRow = ws.rowCount + 1
+  activeItems.forEach((it, i) => {
+    const qty     = isExtra ? it.extraSlots?.[slot.id]?.qty : it[`qty${posIdx}`]
+    const qtyNum  = parseFloat(qty)             || 0
+    const rateNum = parseFloat(it[`rate${posIdx}`]) || 0
+    const row = ws.addRow([it.code || '', it.label, it.unit || '', qtyNum, rateNum, 0])
+    row.getCell(6).value = { formula: `D${row.number}*E${row.number}`, result: qtyNum * rateNum }
+    row.height = 18
+    if (i % 2 === 1) row.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
+    row.getCell(1).font = { bold: true, color: { argb: 'FF' + hexColor }, size: 10, name: 'Arial' }
+    row.getCell(5).numFmt = '$#,##0.00'
+    row.getCell(6).numFmt = '$#,##0.00'
+    row.eachCell(c => applyBorder(c))
+  })
+  const itemEndRow = ws.rowCount
+  ws.addRow([])
+
+  const medBorder   = { style: 'medium', color: { argb: 'FF' + dark } }
+  const hasDiscounts = discounts.some(d => d.label || d.amount)
+  let subtotalRowNum = null, discRowStart = null, discRowEnd = null
+
+  if (hasDiscounts) {
+    const sr = ws.addRow(['', '', '', '', 'Subtotal', 0])
+    subtotalRowNum = sr.number
+    sr.getCell(6).value  = { formula: `SUM(F${itemStartRow}:F${itemEndRow})`, result: parseFloat(subtotal) || 0 }
+    sr.getCell(5).font   = { size: 11, color: { argb: 'FF555555' }, name: 'Arial' }
+    sr.getCell(6).numFmt = '$#,##0.00'
+    discounts.filter(d => d.label || d.amount).forEach((d, i) => {
+      const dr = ws.addRow(['', '', '', '', d.label || 'Discount', -(parseFloat(d.amount) || 0)])
+      if (i === 0) discRowStart = dr.number
+      discRowEnd = dr.number
+      dr.getCell(5).font = { size: 11, color: { argb: 'FFC0392B' }, name: 'Arial' }
+      dr.getCell(6).font = { size: 11, color: { argb: 'FFC0392B' }, name: 'Arial' }
+      dr.getCell(6).numFmt = '$#,##0.00'
+    })
+  }
+
+  const tr = ws.addRow(['', '', '', '', `Total — ${slot.label}`, 0])
+  tr.getCell(6).value = hasDiscounts && subtotalRowNum != null && discRowStart != null
+    ? { formula: `F${subtotalRowNum}+SUM(F${discRowStart}:F${discRowEnd})`, result: parseFloat(total) || 0 }
+    : { formula: `SUM(F${itemStartRow}:F${itemEndRow})`,                    result: parseFloat(total) || 0 }
+  tr.height = 26
+  tr.getCell(5).font = { bold: true, size: 13, name: 'Arial' }
+  tr.getCell(5).border = { top: medBorder }
+  tr.getCell(6).font = { bold: true, size: 16, color: { argb: 'FF' + hexColor }, name: 'Arial' }
+  tr.getCell(6).numFmt = '$#,##0.00'
+  tr.getCell(6).border = { top: medBorder }
+
+  // Production Data sheet
+  const activeExcelCols = columns.filter(col => rows.some(r => r[col.id] !== '' && r[col.id] != null))
+  if (activeExcelCols.length > 0 && rows.length > 0) {
+    const ws2 = wb.addWorksheet('Production Data')
+    ws2.columns = activeExcelCols.map(c => ({ width: Math.max(14, c.name.length + 4) }))
+    darkHeader(ws2.addRow(activeExcelCols.map(c => c.name)))
+    const dataStartRow = ws2.rowCount + 1
+    rows.forEach((row, i) => {
+      const r = ws2.addRow(activeExcelCols.map(c => {
+        const v = row[c.id] ?? ''
+        return v !== '' && !isNaN(parseFloat(v)) ? parseFloat(v) : v
+      }))
+      r.height = 18
+      if (i % 2 === 1) r.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + lightGray } } })
+      r.eachCell(c => applyBorder(c))
+    })
+    const dataEndRow = ws2.rowCount
+    const sumRow = ws2.addRow(activeExcelCols.map(() => 0))
+    sumRow.height = 20
+    activeExcelCols.forEach((col, colIdx) => {
+      const isNumCol = rows.some(r => r[col.id] !== '' && r[col.id] != null && !isNaN(parseFloat(r[col.id])))
+      const cell   = sumRow.getCell(colIdx + 1)
+      const letter = String.fromCharCode(65 + colIdx)
+      const colSum = isNumCol ? rows.reduce((acc, r) => acc + (parseFloat(r[col.id]) || 0), 0) : 0
+      cell.value  = isNumCol ? { formula: `SUM(${letter}${dataStartRow}:${letter}${dataEndRow})`, result: colSum } : ''
+      cell.font   = { bold: true, size: 11, name: 'Arial' }
+      cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAF6' } }
+      cell.border = { top: medBorder, bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } }, left: { style: 'thin', color: { argb: 'FFE0E0E0' } }, right: { style: 'thin', color: { argb: 'FFE0E0E0' } } }
+      if (isNumCol) cell.numFmt = '#,##0.##'
+    })
+  }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url    = URL.createObjectURL(blob)
+  const a      = document.createElement('a')
+  const safePeriod = (period || '').replace(/[/\\:*?"<>|]/g, '-').trim() || 'payroll'
+  a.href = url
+  a.download = `${crewName}---${project.name}---${safePeriod}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 function fmtPct(n) {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'
@@ -244,6 +414,11 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                               </div>
                             )}
                           </div>
+                          <button
+                            className={s.xlsBtn}
+                            title="Download Excel"
+                            onClick={e => { e.stopPropagation(); downloadSlotExcel({ project, folder, payroll: pr, slot: { id: p.key, posKey: p.key, label: p.label, color: p.color, base: true } }) }}
+                          >XLS</button>
                         </div>
                       )
                     })}
@@ -282,6 +457,11 @@ export default function FolderView({ store, project, folder, onBack, onOpenFolde
                               </div>
                             )}
                           </div>
+                          <button
+                            className={s.xlsBtn}
+                            title="Download Excel"
+                            onClick={e => { e.stopPropagation(); downloadSlotExcel({ project, folder, payroll: pr, slot: { ...slot, color: POS_COLOR[slot.posKey] || '#3949ab', base: false } }) }}
+                          >XLS</button>
                         </div>
                       )
                     })}
