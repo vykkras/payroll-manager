@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { autoFitColumns, mergeAcross, makeTableRegion } from '../utils/excel'
 import s from './FolderPrint.module.css'
 
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
@@ -72,8 +73,8 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
     })
   }
 
+  const COLS = 4
   const ws = wb.addWorksheet('Week Summary')
-  ws.columns = [{ width: 14 }, { width: 26 }, { width: 18 }, { width: 16 }]
 
   // Title block
   const r1 = ws.addRow(['DC Cable — Payroll Summary'])
@@ -84,6 +85,9 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
   r2.getCell(1).font = { bold: true, size: 13, name: 'Arial' }
   const r3 = ws.addRow([folder.name])
   r3.getCell(1).font = { size: 11, color: { argb: 'FF888888' }, name: 'Arial' }
+  mergeAcross(ws, r1.number, COLS)
+  mergeAcross(ws, r2.number, COLS)
+  mergeAcross(ws, r3.number, COLS)
 
   ws.addRow([])
 
@@ -110,6 +114,7 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
 
   // Crew rows
   darkHeader(ws.addRow(['Position', 'Crew Member', 'Period', 'Total']))
+  const headerRow = ws.rowCount
 
   const dataStartRow = ws.rowCount + 1
   crews.forEach((c, i) => {
@@ -122,6 +127,7 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
     row.eachCell(c => applyBorder(c))
   })
   const dataEndRow = ws.rowCount
+  makeTableRegion(ws, headerRow, dataEndRow, COLS)
 
   // Total row with SUM formula
   const totRow = ws.addRow(['', 'Total', '', 0])
@@ -147,6 +153,8 @@ async function downloadFolderExcel({ project, folder, payrolls }) {
       dr.eachCell(c => applyBorder(c))
     })
   }
+
+  autoFitColumns(ws)
 
   const buffer = await wb.xlsx.writeBuffer()
   const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

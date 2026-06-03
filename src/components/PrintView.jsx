@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { autoFitColumns, mergeAcross, makeTableRegion } from '../utils/excel'
 import s from './PrintView.module.css'
 
 const POS_COLOR = { primero: '#3949ab', segundo: '#2e7d32', tercero: '#e65100' }
@@ -47,10 +48,8 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   }
 
   // ── Payroll sheet ─────────────────────────────────────────────────────────
+  const COLS = 6
   const ws = wb.addWorksheet('Payroll')
-  ws.columns = [
-    { width: 10 }, { width: 34 }, { width: 8 }, { width: 10 }, { width: 14 }, { width: 16 },
-  ]
 
   // Company title
   const r1 = ws.addRow(['DC Cable — Payroll Manager'])
@@ -62,6 +61,9 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   r2.getCell(1).font = { bold: true, size: 13, name: 'Arial' }
   const r3 = ws.addRow([folder.name])
   r3.getCell(1).font = { size: 11, color: { argb: 'FF888888' }, name: 'Arial' }
+  mergeAcross(ws, r1.number, COLS)
+  mergeAcross(ws, r2.number, COLS)
+  mergeAcross(ws, r3.number, COLS)
 
   ws.addRow([])
 
@@ -79,6 +81,7 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
 
   // Column headers
   darkHeader(ws.addRow(['Code', 'Description', 'Unit', 'Qty', 'Rate', 'Amount']))
+  const headerRow = ws.rowCount
 
   // Item rows — Amount column uses formula =Qty*Rate
   const itemStartRow = ws.rowCount + 1
@@ -140,13 +143,16 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
   tr.getCell(6).numFmt = '$#,##0.00'
   tr.getCell(6).border = { top: medBorder }
 
+  makeTableRegion(ws, headerRow, itemEndRow, COLS)
+  autoFitColumns(ws)
+
   // ── Production Data sheet ─────────────────────────────────────────────────
   const activeExcelCols = columns.filter(col => rows.some(r => r[col.id] !== '' && r[col.id] != null))
   if (activeExcelCols.length > 0 && rows.length > 0) {
     const ws2 = wb.addWorksheet('Production Data')
-    ws2.columns = activeExcelCols.map(c => ({ width: Math.max(14, c.name.length + 4) }))
 
     darkHeader(ws2.addRow(activeExcelCols.map(c => c.name)))
+    const ws2HeaderRow = ws2.rowCount
 
     const dataStartRow = ws2.rowCount + 1
     rows.forEach((row, i) => {
@@ -176,6 +182,8 @@ async function downloadExcel({ project, folder, slot, payroll, posIdx, isExtra, 
       cell.border = { top: medBorder, bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } }, left: { style: 'thin', color: { argb: 'FFE0E0E0' } }, right: { style: 'thin', color: { argb: 'FFE0E0E0' } } }
       if (isNumCol) cell.numFmt = '#,##0.##'
     })
+    makeTableRegion(ws2, ws2HeaderRow, dataEndRow, activeExcelCols.length)
+    autoFitColumns(ws2)
   }
 
   // Download

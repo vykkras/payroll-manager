@@ -1,3 +1,4 @@
+import { autoFitColumns, mergeAcross, makeTableRegion } from '../utils/excel'
 import s from './SummaryPrint.module.css'
 
 function fmtMoney(n) {
@@ -32,10 +33,8 @@ async function downloadSummaryExcel({ project, folder, summary }) {
     })
   }
 
+  const COLS = hasAnyDisc ? 5 : 3
   const ws = wb.addWorksheet('Summary')
-  ws.columns = hasAnyDisc
-    ? [{ width: 14 }, { width: 26 }, { width: 16 }, { width: 16 }, { width: 16 }]
-    : [{ width: 14 }, { width: 26 }, { width: 16 }]
 
   // Title block
   const r1 = ws.addRow(['DC Cable — Payroll Summary'])
@@ -46,6 +45,9 @@ async function downloadSummaryExcel({ project, folder, summary }) {
   r2.getCell(1).font = { bold: true, size: 13, name: 'Arial' }
   const r3 = ws.addRow([folder.name])
   r3.getCell(1).font = { size: 11, color: { argb: 'FF888888' }, name: 'Arial' }
+  mergeAcross(ws, r1.number, COLS)
+  mergeAcross(ws, r2.number, COLS)
+  mergeAcross(ws, r3.number, COLS)
 
   ws.addRow([])
 
@@ -62,6 +64,7 @@ async function downloadSummaryExcel({ project, folder, summary }) {
     ? ['Position', 'Crew Member', 'Gross', 'Deductions', 'Net Pay']
     : ['Position', 'Crew Member', 'Net Pay']
   darkHeader(ws.addRow(headers))
+  const headerRow = ws.rowCount
 
   const money = '$#,##0.00'
   const netCol = hasAnyDisc ? 'E' : 'C'
@@ -88,6 +91,7 @@ async function downloadSummaryExcel({ project, folder, summary }) {
   })
 
   const dataEndRow = ws.rowCount
+  makeTableRegion(ws, headerRow, dataEndRow, COLS)
 
   // Grand total row with SUM formulas
   const totRow = hasAnyDisc
@@ -134,6 +138,8 @@ async function downloadSummaryExcel({ project, folder, summary }) {
       })
     })
   }
+
+  autoFitColumns(ws)
 
   // Download
   const buffer = await wb.xlsx.writeBuffer()
