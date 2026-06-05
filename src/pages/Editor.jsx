@@ -93,7 +93,12 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
   }
 
   // ── Append this position's rows to other positions (All 2 / All 3) ───────────
+  // Ref guards against the mount-time effect firing on tab switches (DataGrid is
+  // re-keyed per position), which would re-append on every tab change.
+  const lastAppendRef = useRef(appendSignal)
   useEffect(() => {
+    if (appendSignal === lastAppendRef.current) return
+    lastAppendRef.current = appendSignal
     if (!appendSignal || !appendTargets?.length) return
     const source = gridRef.current.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
     if (source.length === 0) { onAppendDone?.(0, appendTargets); return }
