@@ -68,7 +68,7 @@ function flattenFolders(folders, depth = 0, result = []) {
   return result
 }
 
-function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelChange, deleteSignal }) {
+function DataGrid({ store, project, folder, position, appendSignal, appendTargets, onAppendDone, onRowSelChange, deleteSignal }) {
   const columns = project.columns || []
 
   const [grid, setGridState] = useState(() => initGrid(columns, folder.rows, position))
@@ -89,10 +89,24 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
     setGrid(newGrid)
     const nonEmpty = newGrid.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
     const base = normalizeRows(folderRef.current.rows)
-    const update = { ...base, [position]: nonEmpty }
-    if (mirrorPositions?.length) mirrorPositions.forEach(p => { update[p] = nonEmpty })
-    store.setFolderRows(project.id, folderRef.current.id, update)
+    store.setFolderRows(project.id, folderRef.current.id, { ...base, [position]: nonEmpty })
   }
+
+  // ── Append this position's rows to other positions (All 2 / All 3) ───────────
+  useEffect(() => {
+    if (!appendSignal || !appendTargets?.length) return
+    const source = gridRef.current.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+    if (source.length === 0) { onAppendDone?.(0, appendTargets); return }
+    const base = normalizeRows(folderRef.current.rows)
+    const update = { ...base }
+    appendTargets.forEach(p => {
+      if (p === position) return
+      const added = source.map(r => ({ ...r, id: uid() }))
+      update[p] = [...(update[p] || []), ...added]
+    })
+    store.setFolderRows(project.id, folderRef.current.id, update)
+    onAppendDone?.(source.length, appendTargets)
+  }, [appendSignal])
 
   // ── Cell selection ───────────────────────────────────────────────────────────
   const [sel, setSel] = useState(null)         // { r1, c1, r2, c2 } normalised
@@ -224,7 +238,7 @@ function DataGrid({ store, project, folder, position, mirrorPositions, onRowSelC
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [columns, position, mirrorPositions, store, project])
+  }, [columns, position, store, project])
 
   // ── Totals (respects active filter) ─────────────────────────────────────────
   const totals = useMemo(() => {
@@ -406,8 +420,9 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
   const slots = buildSlots(extraSlots, baseSlotLabels)
   const [activeSlotId, setActiveSlotId] = useState(editPayroll?.position || 'primero')
   const [all2Target,   setAll2Target]   = useState('segundo')
-  const [addTwo,       setAddTwo]       = useState(false)
-  const [addAll,       setAddAll]       = useState(false)
+  const [appendSignal,  setAppendSignal]  = useState(0)
+  const [appendTargets, setAppendTargets] = useState([])
+  const [mirrorMsg,     setMirrorMsg]     = useState('')
   const [clearKey,     setClearKey]     = useState(0)
   const [savedMsg,      setSavedMsg]      = useState(false)
   const [showClear,     setShowClear]     = useState(false)
@@ -475,6 +490,24 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
     setShowClear(false)
   }
 
+  // Append the active position's rows below whatever's already in the targets
+  function appendTo(targets) {
+    const tgs = targets.filter(t => t !== activeSlotId)
+    if (tgs.length === 0) return
+    setAppendTargets(tgs)
+    setAppendSignal(v => v + 1)
+  }
+
+  function handleAppendDone(count, targets) {
+    if (count === 0) {
+      setMirrorMsg('No rows to copy')
+    } else {
+      const names = targets.map(t => baseSlotLabels[t] || POS_LABELS[t] || t).join(' & ')
+      setMirrorMsg(`Added ${count} row${count !== 1 ? 's' : ''} to ${names}`)
+    }
+    setTimeout(() => setMirrorMsg(''), 2200)
+  }
+
   return (
   <>
     <div className={s.page}>
@@ -528,15 +561,15 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             <span style={{ color: activeSlot?.color }}>{activeSlot?.label} — Production Data</span>
             <div className={s.panelTitleRight}>
               <button
-                className={`${s.addAllBtn} ${addTwo && !addAll ? s.addAllBtnOn : ''}`}
-                onClick={() => { setAddTwo(v => !v); setAddAll(false) }}
-                title="Mirror edits to Segundo"
-              >{addTwo && !addAll ? '● All 2' : '○ All 2'}</button>
+                className={s.addAllBtn}
+                onClick={() => appendTo(['segundo'])}
+                title="Append this position's rows to Segundo (keeps existing rows)"
+              >+ All 2</button>
               <button
-                className={`${s.addAllBtn} ${addAll ? s.addAllBtnOn : ''}`}
-                onClick={() => { setAddAll(v => !v); setAddTwo(false) }}
-                title="Mirror edits to all positions"
-              >{addAll ? '● All 3' : '○ All 3'}</button>
+                className={s.addAllBtn}
+                onClick={() => appendTo(['segundo', 'tercero'])}
+                title="Append this position's rows to Segundo & Tercero (keeps existing rows)"
+              >+ All 3</button>
               {copyRows.length > 0 && (
                 <>
                   <button
@@ -559,13 +592,16 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
             </div>
           </div>
           {copiedMsg && <div className={s.copiedBanner}>{copiedMsg}</div>}
+          {mirrorMsg && <div className={s.copiedBanner}>{mirrorMsg}</div>}
           <DataGrid
             key={activeSlotId + '-' + clearKey}
             store={store}
             project={project}
             folder={folder}
             position={activeSlotId}
-            mirrorPositions={addAll ? ['segundo', 'tercero'] : addTwo ? ['segundo'] : []}
+            appendSignal={appendSignal}
+            appendTargets={appendTargets}
+            onAppendDone={handleAppendDone}
             onRowSelChange={handleRowSelChange}
             deleteSignal={deleteSignal}
           />
