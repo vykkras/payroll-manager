@@ -100,7 +100,12 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
     if (appendSignal === lastAppendRef.current) return
     lastAppendRef.current = appendSignal
     if (!appendSignal || !appendTargets?.length) return
-    const source = gridRef.current.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
+    // If rows are selected, only copy those; otherwise copy the whole position.
+    const selected = rowSelRef.current
+    const sourceRows = selected.size > 0
+      ? [...selected].sort((a, b) => a - b).map(i => gridRef.current[i]).filter(Boolean)
+      : gridRef.current
+    const source = sourceRows.filter(row => columns.some(c => row[c.id] !== '' && row[c.id] != null))
     if (source.length === 0) { onAppendDone?.(0, appendTargets); return }
     const base = normalizeRows(folderRef.current.rows)
     const update = { ...base }
@@ -568,12 +573,12 @@ export default function Editor({ store, project, folder, editPayroll, onBack }) 
               <button
                 className={s.addAllBtn}
                 onClick={() => appendTo(['segundo'])}
-                title="Append this position's rows to Segundo (keeps existing rows)"
+                title="Append rows to Segundo (selected rows only if any are selected; keeps existing rows)"
               >+ All 2</button>
               <button
                 className={s.addAllBtn}
                 onClick={() => appendTo(['segundo', 'tercero'])}
-                title="Append this position's rows to Segundo & Tercero (keeps existing rows)"
+                title="Append rows to Segundo & Tercero (selected rows only if any are selected; keeps existing rows)"
               >+ All 3</button>
               {copyRows.length > 0 && (
                 <>
