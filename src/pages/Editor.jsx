@@ -126,6 +126,7 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
   const selRef        = useRef(null)
   const dragStart     = useRef(null)
   const mouseDown     = useRef(false)
+  const tableRef      = useRef(null)
 
   // ── Grid filter (must be declared before totals) ─────────────────────────────
   const [gridFilter, setGridFilter] = useState({})
@@ -229,39 +230,48 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
         try { await navigator.clipboard.writeText(lines.join('\n')) } catch {}
       }
 
-      if (e.key === 'v') {
-        e.preventDefault()
-        try {
-          const text = await navigator.clipboard.readText()
-          if (!text) return
-          // Trailing newline from spreadsheet column copies produces one empty
-          // extra row — drop it so it doesn't blank out the row right after.
-          let lines = text.replace(/\r/g, '').split('\n')
-          if (lines.length > 1 && lines[lines.length - 1] === '') lines = lines.slice(0, -1)
-          const pasteRows = lines.map(r => r.split('\t'))
-
-          const newGrid = gridRef.current.map(r => ({ ...r }))
-          const neededRows = s.r1 + pasteRows.length
-          while (newGrid.length < neededRows) {
-            const row = { id: uid() }
-            columns.forEach(c => { row[c.id] = '' })
-            newGrid.push(row)
-          }
-
-          pasteRows.forEach((cells, ri) => {
-            const rowIdx = s.r1 + ri
-            cells.forEach((val, ci) => {
-              const colIdx = s.c1 + ci
-              if (colIdx >= columns.length) return
-              newGrid[rowIdx] = { ...newGrid[rowIdx], [columns[colIdx].id]: val }
-            })
-          })
-          commitGrid(newGrid)
-        } catch {}
-      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
+  }, [columns, position, store, project])
+
+  // Real 'paste' event (not just the Ctrl/Cmd+V shortcut) — also fires for
+  // right-click "Paste", the Edit menu, and trackpad gestures, and gives us
+  // clipboard data synchronously without needing clipboard-read permission.
+  useEffect(() => {
+    function onPaste(e) {
+      if (!tableRef.current || !tableRef.current.contains(e.target)) return
+      const s = selRef.current
+      if (!s) return
+      e.preventDefault()
+      const text = e.clipboardData?.getData('text/plain') || ''
+      if (!text) return
+      // Trailing newline from spreadsheet column copies produces one empty
+      // extra row — drop it so it doesn't blank out the row right after.
+      let lines = text.replace(/\r/g, '').split('\n')
+      if (lines.length > 1 && lines[lines.length - 1] === '') lines = lines.slice(0, -1)
+      const pasteRows = lines.map(r => r.split('\t'))
+
+      const newGrid = gridRef.current.map(r => ({ ...r }))
+      const neededRows = s.r1 + pasteRows.length
+      while (newGrid.length < neededRows) {
+        const row = { id: uid() }
+        columns.forEach(c => { row[c.id] = '' })
+        newGrid.push(row)
+      }
+
+      pasteRows.forEach((cells, ri) => {
+        const rowIdx = s.r1 + ri
+        cells.forEach((val, ci) => {
+          const colIdx = s.c1 + ci
+          if (colIdx >= columns.length) return
+          newGrid[rowIdx] = { ...newGrid[rowIdx], [columns[colIdx].id]: val }
+        })
+      })
+      commitGrid(newGrid)
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
   }, [columns, position, store, project])
 
   // ── Totals (respects active filter) ─────────────────────────────────────────
@@ -374,7 +384,7 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
         </div>
       )}
       <div className={s.tableScroll}>
-        <table className={s.table}>
+        <table className={s.table} ref={tableRef}>
           <thead>
             <tr>
               <th className={s.rowNumHead}>#</th>
