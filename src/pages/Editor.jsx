@@ -52,7 +52,10 @@ const GRID_ROWS = 30
 
 function initGrid(columns, folderRows, position) {
   const existing = normalizeRows(folderRows)[position] || []
-  return Array.from({ length: GRID_ROWS }, (_, i) => {
+  // Grid defaults to GRID_ROWS blank rows, but grows to fit however many rows
+  // are actually stored (e.g. from a paste that grew past the default size).
+  const rowCount = Math.max(GRID_ROWS, existing.length)
+  return Array.from({ length: rowCount }, (_, i) => {
     const ex = existing[i]
     const row = { id: ex?.id || uid() }
     columns.forEach(c => { row[c.id] = ex?.[c.id] ?? '' })
@@ -231,11 +234,22 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
         try {
           const text = await navigator.clipboard.readText()
           if (!text) return
-          const pasteRows = text.split('\n').map(r => r.split('\t'))
+          // Trailing newline from spreadsheet column copies produces one empty
+          // extra row — drop it so it doesn't blank out the row right after.
+          let lines = text.replace(/\r/g, '').split('\n')
+          if (lines.length > 1 && lines[lines.length - 1] === '') lines = lines.slice(0, -1)
+          const pasteRows = lines.map(r => r.split('\t'))
+
           const newGrid = gridRef.current.map(r => ({ ...r }))
+          const neededRows = s.r1 + pasteRows.length
+          while (newGrid.length < neededRows) {
+            const row = { id: uid() }
+            columns.forEach(c => { row[c.id] = '' })
+            newGrid.push(row)
+          }
+
           pasteRows.forEach((cells, ri) => {
             const rowIdx = s.r1 + ri
-            if (rowIdx >= GRID_ROWS) return
             cells.forEach((val, ci) => {
               const colIdx = s.c1 + ci
               if (colIdx >= columns.length) return
@@ -294,7 +308,7 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
 
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault()
-      if (rowIdx + 1 < GRID_ROWS) focusCell(tbody, rowIdx + 1, colIdx)
+      if (rowIdx + 1 < gridRef.current.length) focusCell(tbody, rowIdx + 1, colIdx)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       if (rowIdx > 0) focusCell(tbody, rowIdx - 1, colIdx)
@@ -305,7 +319,7 @@ function DataGrid({ store, project, folder, position, appendSignal, appendTarget
     } else if (e.key === 'ArrowRight' && atEnd) {
       e.preventDefault()
       if (colIdx < columns.length - 1) focusCell(tbody, rowIdx, colIdx + 1)
-      else if (rowIdx + 1 < GRID_ROWS) focusCell(tbody, rowIdx + 1, 0)
+      else if (rowIdx + 1 < gridRef.current.length) focusCell(tbody, rowIdx + 1, 0)
     }
   }
 
